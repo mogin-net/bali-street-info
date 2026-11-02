@@ -3,8 +3,5 @@
   "private": true,
   "workspaces": [
     "web"
-  ],
-  "scripts": {
-    "web": "yarn workspace web"
-  }
+  ]
 }
