@@ -1,5 +1,5 @@
-import { MapPin, Send, Car, Bike } from "lucide-react";
-
+import { MapPin, Send, CarFront, Motorbike } from "lucide-react";
+import MapPreview from "./mapPreview";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import {
@@ -34,6 +34,13 @@ const ReportForm = ({
       className="flex flex-1 flex-col gap-5 overflow-y-auto bg-white p-4"
       onSubmit={(event) => event.preventDefault()}
     >
+      {/* MAP PREVIEW */}
+      <div className="space-y-2">
+        {startPoint && endPoint && (
+          <MapPreview startPoint={startPoint} endPoint={endPoint} />
+        )}
+      </div>
+
       {/* LOKASI JALAN */}
       <div className="space-y-2">
         <label className="text-xs font-semibold">
@@ -160,7 +167,7 @@ const ReportForm = ({
               className="size-4 accent-black"
             />
 
-            <Car className="size-6 shrink-0" />
+            <CarFront className="size-6 shrink-0" />
 
             <span>
               <span className="block text-xs font-semibold">Mobil</span>
@@ -181,7 +188,7 @@ const ReportForm = ({
               className="size-4 accent-black"
             />
 
-            <Bike className="size-6 shrink-0" />
+            <Motorbike className="size-6 shrink-0" />
 
             <span>
               <span className="block text-xs font-semibold">Motor</span>

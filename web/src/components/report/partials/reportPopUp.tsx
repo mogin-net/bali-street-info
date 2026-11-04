@@ -6,7 +6,7 @@ import {
   useMapEvents,
   useMap,
 } from "react-leaflet";
-import { LocateFixed, X } from "lucide-react";
+import { LocateFixed, RefreshCcw, X } from "lucide-react";
 import {
   divIcon,
   type LeafletMouseEvent,
@@ -309,6 +309,7 @@ const ReportPopUp = ({
               className="h-11"
               onClick={onReset}
             >
+              <RefreshCcw className="size-5" />
               Reset
             </Button>
 
