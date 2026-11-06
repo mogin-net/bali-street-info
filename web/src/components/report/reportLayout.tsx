@@ -11,7 +11,7 @@ const ReportLayout = () => {
 
   const [endPoint, setEndPoint] = useState<LocationPoint | null>(null);
 
-  const [activePoint, setActivePoint] = useState<"start" | "end">("start");
+  const [activePoint, setActivePoint] = useState<"start" | "end">("end");
 
   // Mengambil lokasi perangkat saat popup pertama kali dibuka.
   useEffect(() => {
@@ -33,7 +33,7 @@ const ReportLayout = () => {
   }, [isLocationOpen, startPoint]);
 
   // Membuka popup dan menentukan titik yang akan diedit.
-  const handleOpenLocation = (point: "start" | "end" = "start") => {
+  const handleOpenLocation = (point: "start" | "end" = "end") => {
     setActivePoint(point);
     setIsLocationOpen(true);
   };

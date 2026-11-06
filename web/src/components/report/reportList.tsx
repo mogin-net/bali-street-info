@@ -1,4 +1,4 @@
-import { MapPin, Send, CarFront, Motorbike } from "lucide-react";
+import { MapPin, Send, CarFront, Motorbike, RouteIcon } from "lucide-react";
 import MapPreview from "./mapPreview";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
@@ -9,6 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { Route } from "react-router-dom";
+import "./style.css";
 
 export interface LocationPoint {
   lat: number;
@@ -24,7 +26,7 @@ interface ReportFormProps {
 const formatCoordinate = (point: LocationPoint) =>
   `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`;
 
-const ReportForm = ({
+const ReportList = ({
   startPoint,
   endPoint,
   onOpenLocation,
@@ -47,21 +49,21 @@ const ReportForm = ({
           Lokasi Jalan <span className="text-red-500">*</span>
         </label>
 
-        <button
-          type="button"
-          onClick={() => onOpenLocation("start")}
-          className="flex min-h-12 w-full items-center gap-3 rounded-xl border bg-white px-3 text-left hover:bg-gray-50"
-        >
-          <MapPin className="size-5 shrink-0 text-gray-500" />
+        {!(startPoint && endPoint) && (
+          <button
+            type="button"
+            onClick={() => onOpenLocation()}
+            className="flex min-h-12 w-full items-center gap-3 rounded-xl border bg-white px-3 text-left hover:bg-gray-50"
+          >
+            <MapPin className="size-5 shrink-0 text-gray-500" />
 
-          <span className="flex-1 text-xs text-gray-500">
-            {startPoint && endPoint
-              ? "Lokasi penutupan sudah dipilih"
-              : "Klik untuk pilih lokasi penutupan"}
-          </span>
+            <span className="flex-1 text-xs text-gray-500">
+              Klik untuk pilih lokasi penutupan
+            </span>
 
-          <span className="text-xs text-gray-400">◎</span>
-        </button>
+            <span className="text-xs text-gray-400">◎</span>
+          </button>
+        )}
 
         {/* DETAIL TITIK AWAL DAN AKHIR */}
         {startPoint && endPoint && (
@@ -71,37 +73,7 @@ const ReportForm = ({
             className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-gray-50"
           >
             {/* SVG INDIKATOR LOKASI */}
-            <div className="flex shrink-0 items-center justify-center">
-              <svg
-                width="23"
-                height="20"
-                viewBox="0 0 23 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M6.58131 15.6812C6.58131 17.2368 5.32025 18.4978 3.76466 18.4978C2.20906 18.4978 0.947998 17.2368 0.947998 15.6812C0.947998 14.1256 2.20906 12.8645 3.76466 12.8645C5.32025 12.8645 6.58131 14.1256 6.58131 15.6812Z"
-                  strokeWidth="1.89583"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  stroke="#202020"
-                />
-                <path
-                  d="M21.7478 3.76456C21.7478 5.32016 20.4868 6.58122 18.9312 6.58122C17.3756 6.58122 16.1145 5.32016 16.1145 3.76456C16.1145 2.20897 17.3756 0.947906 18.9312 0.947906C20.4868 0.947906 21.7478 2.20897 21.7478 3.76456Z"
-                  strokeWidth="1.89583"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  stroke="#202020"
-                />
-                <path
-                  d="M6.36475 14.0562L16.223 5.38956"
-                  strokeWidth="1.89583"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  stroke="#202020"
-                />
-              </svg>
-            </div>
+            <RouteIcon className="flex shrink-0 items-center justify-center" />
 
             {/* INFORMASI TITIK */}
             <div className="min-w-0 flex-1 space-y-3">
@@ -140,6 +112,8 @@ const ReportForm = ({
             <SelectItem value="upacara">Upacara</SelectItem>
 
             <SelectItem value="bencana">Bencana</SelectItem>
+
+            <SelectItem value="event">Event</SelectItem>
 
             <SelectItem value="lainnya">Lainnya</SelectItem>
           </SelectContent>
@@ -213,7 +187,10 @@ const ReportForm = ({
       </div>
 
       {/* TOMBOL KIRIM */}
-      <Button type="submit" className="h-11 w-full rounded-xl">
+      <Button
+        type="submit"
+        className="h-11 w-full rounded-xl position:sticky bottom-0"
+      >
         <Send className="mr-2 size-4" />
         Kirim Laporan
       </Button>
@@ -221,4 +198,4 @@ const ReportForm = ({
   );
 };
 
-export default ReportForm;
+export default ReportList;

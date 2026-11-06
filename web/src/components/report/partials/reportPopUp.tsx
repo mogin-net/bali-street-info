@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -71,7 +71,11 @@ const MapClickHandler = ({
   activePoint,
   onChangeStart,
   onChangeEnd,
-}: Pick<ReportPopUpProps, "activePoint" | "onChangeStart" | "onChangeEnd">) => {
+  onSelectPoint,
+}: Pick<
+  ReportPopUpProps,
+  "activePoint" | "onChangeStart" | "onChangeEnd"
+> & { onSelectPoint: () => void }) => {
   useMapEvents({
     click: (event: LeafletMouseEvent) => {
       const point: LocationPoint = {
@@ -84,6 +88,8 @@ const MapClickHandler = ({
       } else {
         onChangeEnd(point);
       }
+
+      onSelectPoint();
     },
   });
 
@@ -142,6 +148,8 @@ const ReportPopUp = ({
   onSave,
   onClose,
 }: ReportPopUpProps) => {
+  const [isInitialView, setIsInitialView] = useState(true);
+
   const locateMe = () => {
     if (!navigator.geolocation) {
       alert("Browser tidak mendukung lokasi perangkat.");
@@ -164,6 +172,7 @@ const ReportPopUp = ({
   };
 
   const activeLocation = activePoint === "start" ? startPoint : endPoint;
+  const viewportLocation = isInitialView ? startPoint : activeLocation;
 
   return (
     <div className="fixed inset-0 z-[2000] flex flex-col justify-end bg-black/50">
@@ -209,12 +218,13 @@ const ReportPopUp = ({
 
             <MapResizeHandler />
 
-            <MapViewportHandler point={activeLocation} />
+            <MapViewportHandler point={viewportLocation} />
 
             <MapClickHandler
               activePoint={activePoint}
               onChangeStart={onChangeStart}
               onChangeEnd={onChangeEnd}
+              onSelectPoint={() => setIsInitialView(false)}
             />
 
             {startPoint && (
@@ -254,7 +264,10 @@ const ReportPopUp = ({
               type="button"
               variant={activePoint === "start" ? "default" : "outline"}
               className="h-10 text-xs"
-              onClick={() => onChangeActive("start")}
+              onClick={() => {
+                setIsInitialView(false);
+                onChangeActive("start");
+              }}
             >
               Titik Awal
             </Button>
@@ -263,7 +276,10 @@ const ReportPopUp = ({
               type="button"
               variant={activePoint === "end" ? "default" : "outline"}
               className="h-10 text-xs"
-              onClick={() => onChangeActive("end")}
+              onClick={() => {
+                setIsInitialView(false);
+                onChangeActive("end");
+              }}
             >
               Titik Akhir
             </Button>
