@@ -8,7 +8,7 @@ function App() {
 
   return (
     <>
-      <div className={"pt-20"}>
+      <div>
         <Routes>
           <Route path="/" element={<ReportPage />} />
         </Routes>
