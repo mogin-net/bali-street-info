@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -33,10 +34,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { mockReports } from "./mockReports";
+import DetilInfo from "../detil info";
 import "./home.css";
 
 const SANUR_CENTER: [number, number] = [-8.695, 115.254];
-const SANUR_BOUNDS = new LatLngBounds([-8.721, 115.238], [-8.668, 115.283]);
+const SANUR_BOUNDS = new LatLngBounds(
+  [-8.721, 115.238],
+  [-8.668, 115.283],
+);
 
 const categories = [
   { name: "Semua", icon: List },
@@ -61,18 +66,22 @@ type SearchResult = {
   lon: string;
 };
 
-function getSanurPosition(result: SearchResult): [number, number] | null {
+function getSanurPosition(
+  result: SearchResult,
+): [number, number] | null {
   const lat = Number(result.lat);
   const lon = Number(result.lon);
 
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
 
   const position: [number, number] = [lat, lon];
+
   return SANUR_BOUNDS.contains(position) ? position : null;
 }
 
 function Home() {
   const navigate = useNavigate();
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const locationMarkerRef = useRef<CircleMarker | null>(null);
@@ -81,14 +90,25 @@ function Home() {
   const searchAbortRef = useRef<AbortController | null>(null);
   const lastSearchAtRef = useRef<number | null>(null);
 
-  const [activeCategory, setActiveCategory] = useState<Category>("Semua");
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] =
+    useState<Category>("Semua");
+
+  const [selectedReportId, setSelectedReportId] =
+    useState<string | null>(null);
+
+  const [detailReportId, setDetailReportId] =
+    useState<string | null>(null);
+
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchMessage, setSearchMessage] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+
+  const selectedDetailReport = mockReports.find(
+    (report) => report.id === detailReportId,
+  );
 
   useEffect(() => {
     const container = mapContainerRef.current;
@@ -106,12 +126,15 @@ function Home() {
     mapRef.current = map;
     map.zoomControl?.setPosition("bottomright");
 
-    new TileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
-      noWrap: true,
-    }).addTo(map);
+    new TileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+        noWrap: true,
+      },
+    ).addTo(map);
 
     reportsLayerRef.current = new LayerGroup().addTo(map);
 
@@ -136,10 +159,14 @@ function Home() {
 
     const handleLocationFound = (event: LocationEvent) => {
       setIsLocating(false);
+
       console.log("Latitude:", event.latlng.lat);
       console.log("Longitude:", event.latlng.lng);
       console.log("Akurasi GPS:", event.accuracy, "meter");
-      console.log("Di dalam batas Sanur:", SANUR_BOUNDS.contains(event.latlng));
+      console.log(
+        "Di dalam batas Sanur:",
+        SANUR_BOUNDS.contains(event.latlng),
+      );
 
       if (!SANUR_BOUNDS.contains(event.latlng)) {
         locationMarkerRef.current?.remove();
@@ -148,6 +175,7 @@ function Home() {
         setLocationMessage(
           "Lokasi kamu berada di luar area Sanur. Peta tetap di Sanur.",
         );
+
         setTimeout(() => setLocationMessage(""), 5000);
         return;
       }
@@ -155,13 +183,16 @@ function Home() {
       if (locationMarkerRef.current) {
         locationMarkerRef.current.setLatLng(event.latlng);
       } else {
-        locationMarkerRef.current = new CircleMarker(event.latlng, {
-          radius: 8,
-          color: "#FFFFFF",
-          weight: 3,
-          fillColor: "#2563EB",
-          fillOpacity: 1,
-        }).addTo(map);
+        locationMarkerRef.current = new CircleMarker(
+          event.latlng,
+          {
+            radius: 8,
+            color: "#FFFFFF",
+            weight: 3,
+            fillColor: "#2563EB",
+            fillOpacity: 1,
+          },
+        ).addTo(map);
       }
 
       setLocationMessage("");
@@ -170,14 +201,17 @@ function Home() {
 
     const handleLocationError = () => {
       setIsLocating(false);
+
       setLocationMessage(
         "Lokasi tidak ditemukan. Periksa izin lokasi di browser.",
       );
+
       setTimeout(() => setLocationMessage(""), 5000);
     };
 
     const handleMapClick = () => {
       setSelectedReportId(null);
+      setDetailReportId(null);
     };
 
     map.on("locationfound", handleLocationFound);
@@ -220,7 +254,9 @@ function Home() {
     const displayedReports =
       categoryToFilter === "Semua"
         ? mockReports
-        : mockReports.filter((report) => report.category === categoryToFilter);
+        : mockReports.filter(
+            (report) => report.category === categoryToFilter,
+          );
 
     displayedReports.forEach((report) => {
       if (report.roadPath.length < 2) return;
@@ -249,14 +285,19 @@ function Home() {
       );
 
       polyline.addTo(layerGroup);
+
       const markerPosition = polyline.getCenter();
 
       polyline.on("click", (event) => {
         event.originalEvent?.stopPropagation();
 
-        setSelectedReportId((prev) => (prev === report.id ? null : report.id));
+        setSelectedReportId((prev) =>
+          prev === report.id ? null : report.id,
+        );
 
-        mapRef.current?.panTo(markerPosition, { animate: true });
+        mapRef.current?.panTo(markerPosition, {
+          animate: true,
+        });
       });
 
       const size = isSelected ? 34 : 26;
@@ -265,9 +306,17 @@ function Home() {
 
       const iconMarkup = renderToStaticMarkup(
         isClosed ? (
-          <X size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
+          <X
+            size={iconSize}
+            strokeWidth={3.5}
+            color="#FFFFFF"
+          />
         ) : (
-          <Check size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
+          <Check
+            size={iconSize}
+            strokeWidth={3.5}
+            color="#FFFFFF"
+          />
         ),
       );
 
@@ -321,9 +370,12 @@ function Home() {
       marker.on("click", (event) => {
         event.originalEvent?.stopPropagation();
 
-        setSelectedReportId((prev) => (prev === report.id ? null : report.id));
+        setSelectedReportId(report.id);
+        setDetailReportId(report.id);
 
-        mapRef.current?.panTo(markerPosition, { animate: true });
+        mapRef.current?.panTo(markerPosition, {
+          animate: true,
+        });
       });
 
       marker.addTo(layerGroup);
@@ -344,6 +396,7 @@ function Home() {
 
   function goToMyLocation() {
     const map = mapRef.current;
+
     if (!map || isLocating) return;
 
     if (!navigator.geolocation) {
@@ -361,9 +414,13 @@ function Home() {
     });
   }
 
-  function showSearchResult(result: SearchResult, closeList = false) {
+  function showSearchResult(
+    result: SearchResult,
+    closeList = false,
+  ) {
     const map = mapRef.current;
     const position = getSanurPosition(result);
+
     if (!map || !position) return;
 
     searchMarkerRef.current?.remove();
@@ -390,7 +447,9 @@ function Home() {
     }
   }
 
-  async function handleSearch(event: FormEvent<HTMLFormElement>) {
+  async function handleSearch(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     const searchTerm = query.trim();
@@ -408,7 +467,9 @@ function Home() {
       lastSearchAtRef.current !== null &&
       searchTime - lastSearchAtRef.current < 1200
     ) {
-      setSearchMessage("Tunggu sebentar sebelum mencari lagi.");
+      setSearchMessage(
+        "Tunggu sebentar sebelum mencari lagi.",
+      );
       return;
     }
 
@@ -446,10 +507,13 @@ function Home() {
       );
 
       if (!response.ok) {
-        throw new Error("Layanan pencarian sedang bermasalah.");
+        throw new Error(
+          "Layanan pencarian sedang bermasalah.",
+        );
       }
 
       const data = (await response.json()) as SearchResult[];
+
       if (controller.signal.aborted) return;
 
       const sanurResults = data.filter(
@@ -457,7 +521,9 @@ function Home() {
       );
 
       if (sanurResults.length === 0) {
-        setSearchMessage("Jalan tidak ditemukan di area Sanur pada peta.");
+        setSearchMessage(
+          "Jalan tidak ditemukan di area Sanur pada peta.",
+        );
         return;
       }
 
@@ -467,7 +533,9 @@ function Home() {
       if (controller.signal.aborted) return;
 
       setSearchMessage(
-        error instanceof Error ? error.message : "Pencarian gagal. Coba lagi.",
+        error instanceof Error
+          ? error.message
+          : "Pencarian gagal. Coba lagi.",
       );
     } finally {
       if (searchAbortRef.current === controller) {
@@ -480,6 +548,7 @@ function Home() {
   function changeSearchText(value: string) {
     searchAbortRef.current?.abort();
     searchAbortRef.current = null;
+
     setIsSearching(false);
     setQuery(value);
     setSearchResults([]);
@@ -491,13 +560,18 @@ function Home() {
       <header className="relative z-[1300] shrink-0 bg-white px-3 pt-3 pb-2 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3 rounded-2xl border border-[#E5E5E5] bg-white p-3 shadow-sm sm:p-4">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#191919] sm:size-11">
-            <MapPin size={22} strokeWidth={2} className="text-white" />
+            <MapPin
+              size={22}
+              strokeWidth={2}
+              className="text-white"
+            />
           </div>
 
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xs font-semibold leading-5 text-[#191919] sm:text-sm lg:text-base">
               Peta Penutupan Jalan Sanur
             </h1>
+
             <p className="truncate text-[10px] leading-4 text-[#858585] sm:text-xs">
               Informasi jalan ditutup di kawasan Sanur
             </p>
@@ -516,7 +590,11 @@ function Home() {
       </header>
 
       <div className="relative z-[1200] shrink-0 bg-white px-3 pb-3 sm:px-6 lg:px-8">
-        <form onSubmit={handleSearch} role="search" className="relative w-full">
+        <form
+          onSubmit={handleSearch}
+          role="search"
+          className="relative w-full"
+        >
           <Button
             type="submit"
             variant="ghost"
@@ -531,16 +609,22 @@ function Home() {
           <Input
             type="search"
             value={query}
-            onChange={(event) => changeSearchText(event.target.value)}
+            onChange={(event) =>
+              changeSearchText(event.target.value)
+            }
             placeholder="Cari jalan di Sanur..."
             aria-label="Cari jalan di Sanur"
             className="h-10 w-full rounded-xl border-[#E5E5E5] bg-white pr-3 pl-11 text-xs text-[#191919] shadow-sm placeholder:text-[#A0A0A0]"
           />
 
-          {(isSearching || searchMessage || searchResults.length > 0) && (
+          {(isSearching ||
+            searchMessage ||
+            searchResults.length > 0) && (
             <div className="absolute top-12 right-0 left-0 z-10 max-h-56 overflow-y-auto rounded-xl border border-[#E5E5E5] bg-white p-2 text-xs shadow-lg">
               {isSearching && (
-                <p className="px-2 py-1">Sedang mencari jalan di Sanur...</p>
+                <p className="px-2 py-1">
+                  Sedang mencari jalan di Sanur...
+                </p>
               )}
 
               {searchMessage && (
@@ -558,6 +642,7 @@ function Home() {
                   className="h-auto w-full justify-start gap-2 whitespace-normal rounded-lg px-2 py-2 text-left text-xs text-[#191919]"
                 >
                   <MapPin size={15} className="shrink-0" />
+
                   <span className="min-w-0 break-words">
                     {result.display_name}
                   </span>
@@ -601,7 +686,12 @@ function Home() {
                     : "border-[#D5D5D5] bg-white text-[#191919] hover:bg-[#F3F3F3] hover:text-[#191919]"
                 }`}
               >
-                <Icon size={16} strokeWidth={2} className="shrink-0" />
+                <Icon
+                  size={16}
+                  strokeWidth={2}
+                  className="shrink-0"
+                />
+
                 <span>{name}</span>
               </Button>
             ))}
@@ -614,7 +704,9 @@ function Home() {
               role="status"
               className="pointer-events-auto max-w-60 rounded-lg bg-white px-3 py-2 text-xs text-[#191919] shadow-md"
             >
-              {isLocating ? "Sedang mencari lokasi..." : locationMessage}
+              {isLocating
+                ? "Sedang mencari lokasi..."
+                : locationMessage}
             </div>
           )}
 
@@ -639,14 +731,22 @@ function Home() {
           <div className="flex items-end justify-between gap-2">
             <div className="pointer-events-auto flex shrink-0 flex-col gap-1.5 rounded-xl border border-[#E5E5E5] bg-white px-2 py-2 shadow-md sm:gap-2 sm:px-3">
               {legends.map(({ label, icon: Icon }) => (
-                <div key={label} className="flex items-center gap-1.5 sm:gap-2">
-                  <Icon size={16} className="shrink-0 text-[#191919]" />
+                <div
+                  key={label}
+                  className="flex items-center gap-1.5 sm:gap-2"
+                >
+                  <Icon
+                    size={16}
+                    className="shrink-0 text-[#191919]"
+                  />
+
                   <span className="whitespace-nowrap text-[9px] text-[#191919] sm:text-xs">
                     {label}
                   </span>
                 </div>
               ))}
             </div>
+
             <Button
               type="button"
               onClick={() => navigate("/report")}
@@ -654,14 +754,29 @@ function Home() {
               className="pointer-events-auto h-10 shrink-0 gap-1.5 rounded-full bg-[#191919] px-2.5 text-[10px] text-white shadow-md disabled:bg-[#191919] disabled:text-white disabled:opacity-100 sm:gap-2 sm:px-4 sm:text-xs"
             >
               <PenLine size={16} className="shrink-0" />
+
               <span className="hidden min-[360px]:inline">
                 Laporkan Penutupan
               </span>
-              <span className="min-[360px]:hidden">Laporkan</span>
+
+              <span className="min-[360px]:hidden">
+                Laporkan
+              </span>
             </Button>
           </div>
         </div>
       </section>
+
+      {selectedDetailReport && (
+        <DetilInfo
+          key={selectedDetailReport.id}
+          report={selectedDetailReport}
+          onClose={() => {
+            setDetailReportId(null);
+            setSelectedReportId(null);
+          }}
+        />
+      )}
     </main>
   );
 }
