@@ -1,0 +1,107 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: block;
+  min-width: 320px;
+  background: #f3f3f3;
+}
+
+#root {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* Peta mengisi seluruh area yang tersedia */
+.home-map,
+.home-map.leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* ==================== KONTROL ZOOM (SERAGAM DENGAN TOMBOL LOKASI SAYA) ==================== */
+.home-map .leaflet-bottom.leaflet-right .leaflet-control-zoom {
+  margin-right: 12px;
+  margin-bottom: 68px; /* Jarak pas 12px di atas tombol Laporkan Penutupan */
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 12px !important; /* rounded-xl seragam */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1) !important; /* shadow-md seragam */
+  overflow: hidden;
+  background-color: #ffffff !important;
+}
+
+@media (min-width: 640px) {
+  .home-map .leaflet-bottom.leaflet-right .leaflet-control-zoom {
+    margin-right: 16px;
+    margin-bottom: 72px; /* Jarak pas 16px di atas tombol Laporkan Penutupan */
+  }
+}
+
+.home-map .leaflet-control-zoom a {
+  width: 40px !important;
+  height: 40px !important;
+  line-height: 38px !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  color: #191919 !important;
+  background-color: #ffffff !important;
+  border: none !important;
+  border-bottom: 1px solid #e5e5e5 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background-color 0.15s ease;
+}
+
+@media (min-width: 640px) {
+  .home-map .leaflet-control-zoom a {
+    width: 44px !important;
+    height: 44px !important;
+    line-height: 42px !important;
+    font-size: 22px !important;
+  }
+}
+
+.home-map .leaflet-control-zoom a:last-child {
+  border-bottom: none !important;
+}
+
+.home-map .leaflet-control-zoom a:hover {
+  background-color: #f3f3f3 !important;
+  color: #191919 !important;
+}
+
+/* Custom Marker Icon */
+.status-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+@keyframes markerPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.status-marker-selected {
+  z-index: 1000 !important;
+}
+
+/* Animasi dipasang ke elemen di dalam, BUKAN ke pembungkus luar Leaflet */
+.status-marker-selected > div {
+  animation: markerPulse 1.8s ease-in-out infinite;
+  transform-origin: center center;
+}
