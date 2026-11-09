@@ -12,6 +12,7 @@ import {
   type LocationEvent,
 } from "leaflet";
 import "leaflet/styles.css";
+import { useNavigate } from "react-router-dom";
 import {
   MapPin,
   Info,
@@ -71,6 +72,7 @@ function getSanurPosition(result: SearchResult): [number, number] | null {
 }
 
 function Home() {
+  const navigate = useNavigate();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const locationMarkerRef = useRef<CircleMarker | null>(null);
@@ -645,10 +647,9 @@ function Home() {
                 </div>
               ))}
             </div>
-
             <Button
               type="button"
-              disabled
+              onClick={() => navigate("/report")}
               aria-label="Laporkan Penutupan"
               className="pointer-events-auto h-10 shrink-0 gap-1.5 rounded-full bg-[#191919] px-2.5 text-[10px] text-white shadow-md disabled:bg-[#191919] disabled:text-white disabled:opacity-100 sm:gap-2 sm:px-4 sm:text-xs"
             >
