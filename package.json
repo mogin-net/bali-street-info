@@ -3,5 +3,8 @@
   "private": true,
   "workspaces": [
     "web"
-  ]
+  ],
+  "dependencies": {
+    "leaflet": "^2.0.0-beta.1"
+  }
 }

@@ -8,7 +8,6 @@
 > npm install
 
 # Run
-> npm run web dev
 > npm run dev -w web
 
 ```
@@ -24,7 +23,8 @@
 > supabase status                 # Check supabase status
 
 # NPM
-> npx i [package name] -w web     # Add dependencies to web package
+> npx i [package name] -w web     # Add dependencies to web package > npm run dev -w web
+
 ```
 
 ## Konsep dan Pembagian fungsi file Ari:

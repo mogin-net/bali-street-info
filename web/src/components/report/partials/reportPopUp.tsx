@@ -72,10 +72,9 @@ const MapClickHandler = ({
   onChangeStart,
   onChangeEnd,
   onSelectPoint,
-}: Pick<
-  ReportPopUpProps,
-  "activePoint" | "onChangeStart" | "onChangeEnd"
-> & { onSelectPoint: () => void }) => {
+}: Pick<ReportPopUpProps, "activePoint" | "onChangeStart" | "onChangeEnd"> & {
+  onSelectPoint: () => void;
+}) => {
   useMapEvents({
     click: (event: LeafletMouseEvent) => {
       const point: LocationPoint = {
