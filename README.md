@@ -25,9 +25,11 @@
 
 # NPM
 > npx i [package name] -w web     # Add dependencies to web package
+```
 
+## Konsep dan Pembagian fungsi file Ari:
 
-# Konsep dan Pembagian fungsi file Ari:
+```
 1. head.tsxdi folder di web/src/components/report
     file yang berisi bagian header dari laporan(tombol back dan "Keterangan halaman").
 
