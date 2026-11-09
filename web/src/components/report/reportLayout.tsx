@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import Head from "./head";
 import ReportList, { type LocationPoint } from "./reportList";
@@ -12,25 +12,6 @@ const ReportLayout = () => {
   const [endPoint, setEndPoint] = useState<LocationPoint | null>(null);
 
   const [activePoint, setActivePoint] = useState<"start" | "end">("end");
-
-  // Mengambil lokasi perangkat saat popup pertama kali dibuka.
-  useEffect(() => {
-    if (!isLocationOpen || startPoint || !navigator.geolocation) {
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setStartPoint({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-      },
-      () => {
-        // Pengguna tetap dapat memilih titik secara manual.
-      },
-    );
-  }, [isLocationOpen, startPoint]);
 
   // Membuka popup dan menentukan titik yang akan diedit.
   const handleOpenLocation = (point: "start" | "end" = "end") => {
