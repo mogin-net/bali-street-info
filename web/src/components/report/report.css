@@ -1,0 +1,38 @@
+.form {
+  flex: 1 1 0%;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  background-color: #fff;
+  padding: 1rem;
+}
+
+.label_category {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.label_category:has(:checked) {
+  border-color: #000;
+  background-color: #f9fafb;
+}
+
+.label_accessibility_vehicle {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.label_accessibility_vehicle:has(:checked) {
+  border-color: #000;
+  background-color: #f9fafb;
+}

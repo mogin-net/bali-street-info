@@ -1,0 +1,51 @@
+name: "Feature Request"
+description: Propose a new feature or view to be added to the app
+title: "[Feature]: "
+
+body:
+  - type: textarea
+    id: overview
+    attributes:
+      label: Overview
+      description: Briefly describe the problem context and what needs to be built.
+      placeholder: |
+        The app currently lacks a dedicated ... where users can ...
+        We need a new ... integrated into ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements & Scope
+      description: List what needs to be builtE
+      placeholder: |
+        1. **Category A**: ...
+        2. **Category B**:
+           - ...
+        3. **Category C**:
+           - ...
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Checklist that must be satisfied for this issue to be considered done.
+      placeholder: |
+        - [ ] User can navigate to ... from ...
+        - [ ] Data is successfully saved to ...
+        - [ ] UI matches the existing design system.
+        - [ ] RLS/permission policies prevent access to other users' data.
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
