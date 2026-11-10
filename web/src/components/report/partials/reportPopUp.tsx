@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -15,14 +15,15 @@ import {
 
 import { Button } from "../../ui/button";
 import type { LocationPoint } from "../reportList";
+import { isInsideSanur, SANUR_BOUNDS } from "../sanurBonds";
 
 interface ReportPopUpProps {
   startPoint: LocationPoint | null;
   endPoint: LocationPoint | null;
   activePoint: "start" | "end";
   onChangeActive: (point: "start" | "end") => void;
-  onChangeStart: (point: LocationPoint) => void;
-  onChangeEnd: (point: LocationPoint) => void;
+  onChangeStart: (point: LocationPoint | null) => void;
+  onChangeEnd: (point: LocationPoint | null) => void;
   onReset: () => void;
   onSave: () => void;
   onClose: () => void;
@@ -72,8 +73,10 @@ const MapClickHandler = ({
   onChangeStart,
   onChangeEnd,
   onSelectPoint,
+  onRejectPoint,
 }: Pick<ReportPopUpProps, "activePoint" | "onChangeStart" | "onChangeEnd"> & {
   onSelectPoint: () => void;
+  onRejectPoint: () => void;
 }) => {
   useMapEvents({
     click: (event: LeafletMouseEvent) => {
@@ -81,6 +84,17 @@ const MapClickHandler = ({
         lat: event.latlng.lat,
         lng: event.latlng.lng,
       };
+
+      if (!isInsideSanur(point)) {
+        if (activePoint === "start") {
+          onChangeStart(null);
+        } else {
+          onChangeEnd(null);
+        }
+
+        onRejectPoint();
+        return;
+      }
 
       if (activePoint === "start") {
         onChangeStart(point);
@@ -148,6 +162,42 @@ const ReportPopUp = ({
   onClose,
 }: ReportPopUpProps) => {
   const [isInitialView, setIsInitialView] = useState(true);
+  const [locationWarning, setLocationWarning] = useState("");
+  const initialLocationRequested = useRef(false);
+
+  useEffect(() => {
+    if (
+      startPoint ||
+      initialLocationRequested.current ||
+      !navigator.geolocation
+    ) {
+      return;
+    }
+
+    initialLocationRequested.current = true;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const point: LocationPoint = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        if (!isInsideSanur(point)) {
+          onChangeStart(null);
+          setLocationWarning(
+            "Lokasi di luar batas Sanur ditolak. Silakan pilih ulang lokasi di dalam batas Sanur.",
+          );
+          return;
+        }
+
+        onChangeStart(point);
+      },
+      () => {
+        // Pengguna tetap dapat memilih titik secara manual.
+      },
+    );
+  }, [startPoint, onChangeStart]);
 
   const locateMe = () => {
     if (!navigator.geolocation) {
@@ -157,11 +207,21 @@ const ReportPopUp = ({
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        onChangeStart({
+        const point: LocationPoint = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-        });
+        };
 
+        if (!isInsideSanur(point)) {
+          onChangeStart(null);
+          setLocationWarning(
+            "Lokasi di luar batas Sanur ditolak. Silakan pilih ulang lokasi di dalam batas Sanur.",
+          );
+          return;
+        }
+
+        setLocationWarning("");
+        onChangeStart(point);
         onChangeActive("start");
       },
       () => {
@@ -206,6 +266,9 @@ const ReportPopUp = ({
           <MapContainer
             center={sanurCenter}
             zoom={15}
+            minZoom={14}
+            maxBounds={SANUR_BOUNDS}
+            maxBoundsViscosity={1}
             className="h-full w-full"
             zoomControl
             scrollWheelZoom
@@ -223,10 +286,18 @@ const ReportPopUp = ({
               activePoint={activePoint}
               onChangeStart={onChangeStart}
               onChangeEnd={onChangeEnd}
-              onSelectPoint={() => setIsInitialView(false)}
+              onSelectPoint={() => {
+                setIsInitialView(false);
+                setLocationWarning("");
+              }}
+              onRejectPoint={() =>
+                setLocationWarning(
+                  "Lokasi di luar batas Sanur ditolak. Silakan pilih ulang lokasi di dalam batas Sanur.",
+                )
+              }
             />
 
-            {startPoint && (
+            {startPoint && isInsideSanur(startPoint) && (
               <Marker
                 position={[startPoint.lat, startPoint.lng]}
                 icon={startPinIcon}
@@ -234,7 +305,7 @@ const ReportPopUp = ({
               />
             )}
 
-            {endPoint && (
+            {endPoint && isInsideSanur(endPoint) && (
               <Marker
                 position={[endPoint.lat, endPoint.lng]}
                 icon={endPinIcon}
@@ -254,6 +325,15 @@ const ReportPopUp = ({
           >
             <LocateFixed className="size-5" />
           </Button>
+
+          {locationWarning && (
+            <p
+              role="alert"
+              className="absolute left-4 right-16 top-4 z-[1000] rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900 shadow"
+            >
+              {locationWarning}
+            </p>
+          )}
         </div>
 
         {/* PILIH TITIK */}
@@ -331,7 +411,12 @@ const ReportPopUp = ({
             <Button
               type="button"
               className="h-11"
-              disabled={!startPoint || !endPoint}
+              disabled={
+                !startPoint ||
+                !endPoint ||
+                !isInsideSanur(startPoint) ||
+                !isInsideSanur(endPoint)
+              }
               onClick={onSave}
             >
               Simpan Lokasi
