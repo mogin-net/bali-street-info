@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -12,7 +11,6 @@ import {
   LatLngBounds,
   type LocationEvent,
 } from "leaflet";
-import "leaflet/styles.css";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin,
@@ -38,10 +36,7 @@ import DetilInfo from "../detil info";
 import "./home.css";
 
 const SANUR_CENTER: [number, number] = [-8.695, 115.254];
-const SANUR_BOUNDS = new LatLngBounds(
-  [-8.721, 115.238],
-  [-8.668, 115.283],
-);
+const SANUR_BOUNDS = new LatLngBounds([-8.721, 115.238], [-8.668, 115.283]);
 
 const categories = [
   { name: "Semua", icon: List },
@@ -66,9 +61,7 @@ type SearchResult = {
   lon: string;
 };
 
-function getSanurPosition(
-  result: SearchResult,
-): [number, number] | null {
+function getSanurPosition(result: SearchResult): [number, number] | null {
   const lat = Number(result.lat);
   const lon = Number(result.lon);
 
@@ -90,14 +83,11 @@ function Home() {
   const searchAbortRef = useRef<AbortController | null>(null);
   const lastSearchAtRef = useRef<number | null>(null);
 
-  const [activeCategory, setActiveCategory] =
-    useState<Category>("Semua");
+  const [activeCategory, setActiveCategory] = useState<Category>("Semua");
 
-  const [selectedReportId, setSelectedReportId] =
-    useState<string | null>(null);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
-  const [detailReportId, setDetailReportId] =
-    useState<string | null>(null);
+  const [detailReportId, setDetailReportId] = useState<string | null>(null);
 
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
@@ -126,15 +116,12 @@ function Home() {
     mapRef.current = map;
     map.zoomControl?.setPosition("bottomright");
 
-    new TileLayer(
-      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-        noWrap: true,
-      },
-    ).addTo(map);
+    new TileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+      noWrap: true,
+    }).addTo(map);
 
     reportsLayerRef.current = new LayerGroup().addTo(map);
 
@@ -163,10 +150,7 @@ function Home() {
       console.log("Latitude:", event.latlng.lat);
       console.log("Longitude:", event.latlng.lng);
       console.log("Akurasi GPS:", event.accuracy, "meter");
-      console.log(
-        "Di dalam batas Sanur:",
-        SANUR_BOUNDS.contains(event.latlng),
-      );
+      console.log("Di dalam batas Sanur:", SANUR_BOUNDS.contains(event.latlng));
 
       if (!SANUR_BOUNDS.contains(event.latlng)) {
         locationMarkerRef.current?.remove();
@@ -183,16 +167,13 @@ function Home() {
       if (locationMarkerRef.current) {
         locationMarkerRef.current.setLatLng(event.latlng);
       } else {
-        locationMarkerRef.current = new CircleMarker(
-          event.latlng,
-          {
-            radius: 8,
-            color: "#FFFFFF",
-            weight: 3,
-            fillColor: "#2563EB",
-            fillOpacity: 1,
-          },
-        ).addTo(map);
+        locationMarkerRef.current = new CircleMarker(event.latlng, {
+          radius: 8,
+          color: "#FFFFFF",
+          weight: 3,
+          fillColor: "#2563EB",
+          fillOpacity: 1,
+        }).addTo(map);
       }
 
       setLocationMessage("");
@@ -254,9 +235,7 @@ function Home() {
     const displayedReports =
       categoryToFilter === "Semua"
         ? mockReports
-        : mockReports.filter(
-            (report) => report.category === categoryToFilter,
-          );
+        : mockReports.filter((report) => report.category === categoryToFilter);
 
     displayedReports.forEach((report) => {
       if (report.roadPath.length < 2) return;
@@ -291,9 +270,7 @@ function Home() {
       polyline.on("click", (event) => {
         event.originalEvent?.stopPropagation();
 
-        setSelectedReportId((prev) =>
-          prev === report.id ? null : report.id,
-        );
+        setSelectedReportId((prev) => (prev === report.id ? null : report.id));
 
         mapRef.current?.panTo(markerPosition, {
           animate: true,
@@ -306,17 +283,9 @@ function Home() {
 
       const iconMarkup = renderToStaticMarkup(
         isClosed ? (
-          <X
-            size={iconSize}
-            strokeWidth={3.5}
-            color="#FFFFFF"
-          />
+          <X size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
         ) : (
-          <Check
-            size={iconSize}
-            strokeWidth={3.5}
-            color="#FFFFFF"
-          />
+          <Check size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
         ),
       );
 
@@ -414,10 +383,7 @@ function Home() {
     });
   }
 
-  function showSearchResult(
-    result: SearchResult,
-    closeList = false,
-  ) {
+  function showSearchResult(result: SearchResult, closeList = false) {
     const map = mapRef.current;
     const position = getSanurPosition(result);
 
@@ -447,9 +413,7 @@ function Home() {
     }
   }
 
-  async function handleSearch(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const searchTerm = query.trim();
@@ -467,9 +431,7 @@ function Home() {
       lastSearchAtRef.current !== null &&
       searchTime - lastSearchAtRef.current < 1200
     ) {
-      setSearchMessage(
-        "Tunggu sebentar sebelum mencari lagi.",
-      );
+      setSearchMessage("Tunggu sebentar sebelum mencari lagi.");
       return;
     }
 
@@ -507,9 +469,7 @@ function Home() {
       );
 
       if (!response.ok) {
-        throw new Error(
-          "Layanan pencarian sedang bermasalah.",
-        );
+        throw new Error("Layanan pencarian sedang bermasalah.");
       }
 
       const data = (await response.json()) as SearchResult[];
@@ -521,9 +481,7 @@ function Home() {
       );
 
       if (sanurResults.length === 0) {
-        setSearchMessage(
-          "Jalan tidak ditemukan di area Sanur pada peta.",
-        );
+        setSearchMessage("Jalan tidak ditemukan di area Sanur pada peta.");
         return;
       }
 
@@ -533,9 +491,7 @@ function Home() {
       if (controller.signal.aborted) return;
 
       setSearchMessage(
-        error instanceof Error
-          ? error.message
-          : "Pencarian gagal. Coba lagi.",
+        error instanceof Error ? error.message : "Pencarian gagal. Coba lagi.",
       );
     } finally {
       if (searchAbortRef.current === controller) {
@@ -560,11 +516,7 @@ function Home() {
       <header className="relative z-[1300] shrink-0 bg-white px-3 pt-3 pb-2 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3 rounded-2xl border border-[#E5E5E5] bg-white p-3 shadow-sm sm:p-4">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#191919] sm:size-11">
-            <MapPin
-              size={22}
-              strokeWidth={2}
-              className="text-white"
-            />
+            <MapPin size={22} strokeWidth={2} className="text-white" />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -590,11 +542,7 @@ function Home() {
       </header>
 
       <div className="relative z-[1200] shrink-0 bg-white px-3 pb-3 sm:px-6 lg:px-8">
-        <form
-          onSubmit={handleSearch}
-          role="search"
-          className="relative w-full"
-        >
+        <form onSubmit={handleSearch} role="search" className="relative w-full">
           <Button
             type="submit"
             variant="ghost"
@@ -609,22 +557,16 @@ function Home() {
           <Input
             type="search"
             value={query}
-            onChange={(event) =>
-              changeSearchText(event.target.value)
-            }
+            onChange={(event) => changeSearchText(event.target.value)}
             placeholder="Cari jalan di Sanur..."
             aria-label="Cari jalan di Sanur"
             className="h-10 w-full rounded-xl border-[#E5E5E5] bg-white pr-3 pl-11 text-xs text-[#191919] shadow-sm placeholder:text-[#A0A0A0]"
           />
 
-          {(isSearching ||
-            searchMessage ||
-            searchResults.length > 0) && (
+          {(isSearching || searchMessage || searchResults.length > 0) && (
             <div className="absolute top-12 right-0 left-0 z-10 max-h-56 overflow-y-auto rounded-xl border border-[#E5E5E5] bg-white p-2 text-xs shadow-lg">
               {isSearching && (
-                <p className="px-2 py-1">
-                  Sedang mencari jalan di Sanur...
-                </p>
+                <p className="px-2 py-1">Sedang mencari jalan di Sanur...</p>
               )}
 
               {searchMessage && (
@@ -686,11 +628,7 @@ function Home() {
                     : "border-[#D5D5D5] bg-white text-[#191919] hover:bg-[#F3F3F3] hover:text-[#191919]"
                 }`}
               >
-                <Icon
-                  size={16}
-                  strokeWidth={2}
-                  className="shrink-0"
-                />
+                <Icon size={16} strokeWidth={2} className="shrink-0" />
 
                 <span>{name}</span>
               </Button>
@@ -704,9 +642,7 @@ function Home() {
               role="status"
               className="pointer-events-auto max-w-60 rounded-lg bg-white px-3 py-2 text-xs text-[#191919] shadow-md"
             >
-              {isLocating
-                ? "Sedang mencari lokasi..."
-                : locationMessage}
+              {isLocating ? "Sedang mencari lokasi..." : locationMessage}
             </div>
           )}
 
@@ -731,14 +667,8 @@ function Home() {
           <div className="flex items-end justify-between gap-2">
             <div className="pointer-events-auto flex shrink-0 flex-col gap-1.5 rounded-xl border border-[#E5E5E5] bg-white px-2 py-2 shadow-md sm:gap-2 sm:px-3">
               {legends.map(({ label, icon: Icon }) => (
-                <div
-                  key={label}
-                  className="flex items-center gap-1.5 sm:gap-2"
-                >
-                  <Icon
-                    size={16}
-                    className="shrink-0 text-[#191919]"
-                  />
+                <div key={label} className="flex items-center gap-1.5 sm:gap-2">
+                  <Icon size={16} className="shrink-0 text-[#191919]" />
 
                   <span className="whitespace-nowrap text-[9px] text-[#191919] sm:text-xs">
                     {label}
@@ -759,9 +689,7 @@ function Home() {
                 Laporkan Penutupan
               </span>
 
-              <span className="min-[360px]:hidden">
-                Laporkan
-              </span>
+              <span className="min-[360px]:hidden">Laporkan</span>
             </Button>
           </div>
         </div>
