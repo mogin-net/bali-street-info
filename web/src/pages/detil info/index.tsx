@@ -83,7 +83,6 @@ const [statusJalan, setStatusJalan] = useState(
     setStatusJalan("Ditutup");
   };
 
-  // User mengonfirmasi jalan sudah dibuka
   const handleConfirmOpened = () => {
     const dataBaru = {
       ...konfirmasi,
