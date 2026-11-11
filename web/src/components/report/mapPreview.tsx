@@ -1,4 +1,3 @@
-import React from "react";
 import { useEffect } from "react";
 import { MapContainer, TileLayer, CircleMarker, useMap } from "react-leaflet";
 

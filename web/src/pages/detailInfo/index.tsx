@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   MapPin,
@@ -11,113 +10,114 @@ import {
   Users,
 } from "lucide-react";
 
-import "./detil info.css";
-
-type DetilInfoProps = {
-  report: {
-    id: string;
-    streetName: string;
-    category: string;
-    status: string;
-    title: string;
-  };
-  onClose: () => void;
-};
+import "./style.css";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { mockReports } from "../home/data";
 
 type ConfirmationData = {
-  ditutup: number;
-  dibuka: number;
+  closed: number;
+  opened: number;
 };
 
 function getInitialConfirmation(reportId: string): ConfirmationData {
-  const saved = localStorage.getItem(`konfirmasi-jalan-${reportId}`);
+  const saved = localStorage.getItem(`road-confirmation-${reportId}`);
 
   if (saved) {
     try {
       return JSON.parse(saved) as ConfirmationData;
     } catch {
-      console.error("Data konfirmasi tidak valid");
+      console.error("Confirmation data is invalid");
     }
   }
 
   return {
-    ditutup: 0,
-    dibuka: 0,
+    closed: 0,
+    opened: 0,
   };
 }
 
-function DetilInfo({ report, onClose }: DetilInfoProps) {
- const [konfirmasi, setKonfirmasi] = useState<ConfirmationData>(
-  () => getInitialConfirmation(report.id)
-);
+function DetailInfo() {
+  const { reportId } = useParams();
+  const navigate = useNavigate();
+  const report = mockReports.find((item) => item.id === reportId);
 
-const [statusJalan, setStatusJalan] = useState(
-  report.status === "ditutup" ? "Ditutup" : "Sudah Dibuka"
-);
+  const onClose = () => navigate("/");
 
-  const dataJalan = {
-    nama: report.streetName,
-    lokasi: "Sanur, Denpasar Selatan, Bali",
-    kategori: report.category,
-    waktuAwal: "09 November 2026, 09.30 WITA",
-    aksesMotor: "Tidak Bisa Lewat",
-    aksesMobil: "Tidak Bisa Lewat",
+  const [confirmation, setConfirmation] = useState<ConfirmationData>(() =>
+    getInitialConfirmation(report?.id ?? ""),
+  );
+
+  const [roadStatus, setRoadStatus] = useState(
+    report?.status === "ditutup" ? "Ditutup" : "Sudah Dibuka",
+  );
+
+  if (!report) {
+    return <Navigate to="/" replace />;
+  }
+
+  const roadData = {
+    name: report.streetName,
+    location: "Sanur, Denpasar Selatan, Bali",
+    category: report.category,
+    reportTime: "09 November 2026, 09.30 WITA",
+    motorcycleAccess: "No access",
+    carAccess: "No access",
   };
 
-  const simpanKonfirmasi = (data: ConfirmationData) => {
+  const saveConfirmation = (data: ConfirmationData) => {
     localStorage.setItem(
-      `konfirmasi-jalan-${report.id}`,
-      JSON.stringify(data)
+      `road-confirmation-${report.id}`,
+      JSON.stringify(data),
     );
 
-    setKonfirmasi(data);
+    setConfirmation(data);
   };
 
   const handleConfirmClosed = () => {
-    const dataBaru = {
-      ...konfirmasi,
-      ditutup: konfirmasi.ditutup + 1,
+    const newData = {
+      ...confirmation,
+      closed: confirmation.closed + 1,
     };
 
-    simpanKonfirmasi(dataBaru);
-    setStatusJalan("Ditutup");
+    saveConfirmation(newData);
+    setRoadStatus("Ditutup");
   };
 
   const handleConfirmOpened = () => {
-    const dataBaru = {
-      ...konfirmasi,
-      dibuka: konfirmasi.dibuka + 1,
+    const newData = {
+      ...confirmation,
+      opened: confirmation.opened + 1,
     };
 
-    simpanKonfirmasi(dataBaru);
-    setStatusJalan("Sudah Dibuka");
+    saveConfirmation(newData);
+    setRoadStatus("Sudah Dibuka");
   };
 
-  const informasi = [
+  const infoItems = [
     {
       label: "Kategori",
       icon: Construction,
-      value: dataJalan.kategori,
+      value: roadData.category,
     },
     {
       label: "Waktu Awal Laporan",
       icon: Clock,
-      value: dataJalan.waktuAwal,
+      value: roadData.reportTime,
     },
     {
       label: "Status",
-      icon: statusJalan === "Ditutup" ? CircleX : CircleCheck,
-      value: statusJalan,
+      icon: roadStatus === "Ditutup" ? CircleX : CircleCheck,
+      value: roadStatus,
     },
     {
       label: "Akses Motor",
       icon: Motorbike,
-      value: dataJalan.aksesMotor,
+      value: roadData.motorcycleAccess,
     },
     {
       label: "Akses Mobil",
       icon: CarFront,
-      value: dataJalan.aksesMobil,
+      value: roadData.carAccess,
     },
   ];
 
@@ -137,25 +137,25 @@ const [statusJalan, setStatusJalan] = useState(
         </div>
 
         <div className="road-header">
-          <h2 id="road-detail-title">{dataJalan.nama}</h2>
+          <h2 id="road-detail-title">{roadData.name}</h2>
 
           <p className="road-location">
             <MapPin size={16} />
-            {dataJalan.lokasi}
+            {roadData.location}
           </p>
 
           <span className="road-status">
-            {statusJalan === "Ditutup" ? (
+            {roadStatus === "Ditutup" ? (
               <CircleX size={14} />
             ) : (
               <CircleCheck size={14} />
             )}
-            {statusJalan}
+            {roadStatus}
           </span>
         </div>
 
         <div className="road-information">
-          {informasi.map((item) => {
+          {infoItems.map((item) => {
             const Icon = item.icon;
 
             return (
@@ -183,7 +183,7 @@ const [statusJalan, setStatusJalan] = useState(
                   Ditutup
                 </span>
 
-                <strong>{konfirmasi.ditutup}</strong>
+                <strong>{confirmation.closed}</strong>
               </div>
 
               <div className="confirmation-count-row">
@@ -192,7 +192,7 @@ const [statusJalan, setStatusJalan] = useState(
                   Dibuka
                 </span>
 
-                <strong>{konfirmasi.dibuka}</strong>
+                <strong>{confirmation.opened}</strong>
               </div>
             </div>
           </div>
@@ -218,4 +218,4 @@ const [statusJalan, setStatusJalan] = useState(
   );
 }
 
-export default DetilInfo;
+export default DetailInfo;

@@ -1,20 +1,16 @@
-import { useState } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
-import ReportPage from "./pages/report/report";
-import Home from "./pages/home/home";
+import { Route, Routes } from "react-router-dom";
+import ReportPage from "./pages/report";
+import Home from "./pages/home";
+import DetailInfo from "./pages/detailInfo";
 
 function App() {
-  const location = useLocation();
-
   return (
-    <>
-      <div>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/report" element={<ReportPage />} />
-        </Routes>
-      </div>
-    </>
+    <Routes>
+      <Route path="/" element={<Home />}>
+        <Route path="detail/:reportId" element={<DetailInfo />} />
+      </Route>
+      <Route path="/report" element={<ReportPage />} />
+    </Routes>
   );
 }
 

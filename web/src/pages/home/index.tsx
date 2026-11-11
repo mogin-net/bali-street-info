@@ -11,7 +11,7 @@ import {
   LatLngBounds,
   type LocationEvent,
 } from "leaflet";
-import { useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import {
   MapPin,
   Info,
@@ -31,11 +31,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { mockReports } from "./mockReports";
-import DetilInfo from "../detil info";
-import "./home.css";
+import { mockReports } from "./data";
+import "./style.css";
 
-const SANUR_CENTER: [number, number] = [-8.695, 115.254];
+const BALI_CENTER: [number, number] = [-8.409518, 115.188919];
 const SANUR_BOUNDS = new LatLngBounds([-8.721, 115.238], [-8.668, 115.283]);
 
 const categories = [
@@ -87,18 +86,12 @@ function Home() {
 
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
-  const [detailReportId, setDetailReportId] = useState<string | null>(null);
-
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchMessage, setSearchMessage] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-
-  const selectedDetailReport = mockReports.find(
-    (report) => report.id === detailReportId,
-  );
 
   useEffect(() => {
     const container = mapContainerRef.current;
@@ -107,11 +100,9 @@ function Home() {
     const map = new LeafletMap(container, {
       zoomControl: true,
       scrollWheelZoom: true,
-      minZoom: 14,
+      minZoom: 8,
       maxZoom: 19,
-      maxBounds: SANUR_BOUNDS,
-      maxBoundsViscosity: 1,
-    }).setView(SANUR_CENTER, 16);
+    }).setView(BALI_CENTER, 10);
 
     mapRef.current = map;
     map.zoomControl?.setPosition("bottomright");
@@ -125,44 +116,8 @@ function Home() {
 
     reportsLayerRef.current = new LayerGroup().addTo(map);
 
-    function keepMapInSanur() {
-      map.invalidateSize({ pan: false });
-
-      const minZoom = Math.max(
-        14,
-        Math.min(19, Math.ceil(map.getBoundsZoom(SANUR_BOUNDS, true))),
-      );
-
-      map.setMinZoom(minZoom);
-
-      if (map.getZoom() < minZoom) {
-        map.setZoom(minZoom, { animate: false });
-      }
-
-      map.panInsideBounds(SANUR_BOUNDS, { animate: false });
-    }
-
-    keepMapInSanur();
-
     const handleLocationFound = (event: LocationEvent) => {
       setIsLocating(false);
-
-      console.log("Latitude:", event.latlng.lat);
-      console.log("Longitude:", event.latlng.lng);
-      console.log("Akurasi GPS:", event.accuracy, "meter");
-      console.log("Di dalam batas Sanur:", SANUR_BOUNDS.contains(event.latlng));
-
-      if (!SANUR_BOUNDS.contains(event.latlng)) {
-        locationMarkerRef.current?.remove();
-        locationMarkerRef.current = null;
-
-        setLocationMessage(
-          "Lokasi kamu berada di luar area Sanur. Peta tetap di Sanur.",
-        );
-
-        setTimeout(() => setLocationMessage(""), 5000);
-        return;
-      }
 
       if (locationMarkerRef.current) {
         locationMarkerRef.current.setLatLng(event.latlng);
@@ -192,18 +147,24 @@ function Home() {
 
     const handleMapClick = () => {
       setSelectedReportId(null);
-      setDetailReportId(null);
     };
 
     map.on("locationfound", handleLocationFound);
     map.on("locationerror", handleLocationError);
     map.on("click", handleMapClick);
 
-    const resizeObserver = new ResizeObserver(keepMapInSanur);
-    resizeObserver.observe(container);
+    if (navigator.geolocation) {
+      map.locate({
+        setView: true,
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      });
+    } else {
+      map.setView(BALI_CENTER, 10);
+    }
 
     return () => {
-      resizeObserver.disconnect();
       searchAbortRef.current?.abort();
 
       map.off("locationfound", handleLocationFound);
@@ -340,7 +301,7 @@ function Home() {
         event.originalEvent?.stopPropagation();
 
         setSelectedReportId(report.id);
-        setDetailReportId(report.id);
+        navigate(`/detail/${report.id}`);
 
         mapRef.current?.panTo(markerPosition, {
           animate: true,
@@ -376,11 +337,46 @@ function Home() {
     setIsLocating(true);
     setLocationMessage("");
 
-    map.locate({
-      setView: false,
-      enableHighAccuracy: true,
-      timeout: 10000,
-    });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latlng = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        if (locationMarkerRef.current) {
+          locationMarkerRef.current.setLatLng(latlng);
+        } else {
+          locationMarkerRef.current = new CircleMarker(latlng, {
+            radius: 8,
+            color: "#FFFFFF",
+            weight: 3,
+            fillColor: "#2563EB",
+            fillOpacity: 1,
+          }).addTo(map);
+        }
+
+        const accuracyText =
+          position.coords.accuracy > 100
+            ? `Akurasi GPS sekitar ${Math.round(position.coords.accuracy)} meter.`
+            : "";
+
+        setLocationMessage(accuracyText);
+        setIsLocating(false);
+        map.flyTo(latlng, Math.max(map.getMinZoom(), 17));
+      },
+      () => {
+        setIsLocating(false);
+        setLocationMessage(
+          "Lokasi tidak dapat diambil. Pastikan izin lokasi aktif dan coba lagi.",
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      },
+    );
   }
 
   function showSearchResult(result: SearchResult, closeList = false) {
@@ -695,16 +691,7 @@ function Home() {
         </div>
       </section>
 
-      {selectedDetailReport && (
-        <DetilInfo
-          key={selectedDetailReport.id}
-          report={selectedDetailReport}
-          onClose={() => {
-            setDetailReportId(null);
-            setSelectedReportId(null);
-          }}
-        />
-      )}
+      <Outlet />
     </main>
   );
 }
