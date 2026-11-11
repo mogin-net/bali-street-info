@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   MapPin,
@@ -23,13 +24,36 @@ type DetilInfoProps = {
   onClose: () => void;
 };
 
-function DetilInfo({ report, onClose }: DetilInfoProps) {
-  const [konfirmasiDitutup, setKonfirmasiDitutup] = useState(20);
-  const [konfirmasiDibuka, setKonfirmasiDibuka] = useState(6);
+type ConfirmationData = {
+  ditutup: number;
+  dibuka: number;
+};
 
-  const [statusJalan, setStatusJalan] = useState(
-    report.status === "ditutup" ? "Ditutup" : "Sudah Dibuka"
-  );
+function getInitialConfirmation(reportId: string): ConfirmationData {
+  const saved = localStorage.getItem(`konfirmasi-jalan-${reportId}`);
+
+  if (saved) {
+    try {
+      return JSON.parse(saved) as ConfirmationData;
+    } catch {
+      console.error("Data konfirmasi tidak valid");
+    }
+  }
+
+  return {
+    ditutup: 0,
+    dibuka: 0,
+  };
+}
+
+function DetilInfo({ report, onClose }: DetilInfoProps) {
+ const [konfirmasi, setKonfirmasi] = useState<ConfirmationData>(
+  () => getInitialConfirmation(report.id)
+);
+
+const [statusJalan, setStatusJalan] = useState(
+  report.status === "ditutup" ? "Ditutup" : "Sudah Dibuka"
+);
 
   const dataJalan = {
     nama: report.streetName,
@@ -38,6 +62,36 @@ function DetilInfo({ report, onClose }: DetilInfoProps) {
     waktuAwal: "09 November 2026, 09.30 WITA",
     aksesMotor: "Tidak Bisa Lewat",
     aksesMobil: "Tidak Bisa Lewat",
+  };
+
+  const simpanKonfirmasi = (data: ConfirmationData) => {
+    localStorage.setItem(
+      `konfirmasi-jalan-${report.id}`,
+      JSON.stringify(data)
+    );
+
+    setKonfirmasi(data);
+  };
+
+  const handleConfirmClosed = () => {
+    const dataBaru = {
+      ...konfirmasi,
+      ditutup: konfirmasi.ditutup + 1,
+    };
+
+    simpanKonfirmasi(dataBaru);
+    setStatusJalan("Ditutup");
+  };
+
+  // User mengonfirmasi jalan sudah dibuka
+  const handleConfirmOpened = () => {
+    const dataBaru = {
+      ...konfirmasi,
+      dibuka: konfirmasi.dibuka + 1,
+    };
+
+    simpanKonfirmasi(dataBaru);
+    setStatusJalan("Sudah Dibuka");
   };
 
   const informasi = [
@@ -67,16 +121,6 @@ function DetilInfo({ report, onClose }: DetilInfoProps) {
       value: dataJalan.aksesMobil,
     },
   ];
-
-  const handleConfirmClosed = () => {
-    setStatusJalan("Ditutup");
-    setKonfirmasiDitutup((prev) => prev + 1);
-  };
-
-  const handleConfirmOpened = () => {
-    setStatusJalan("Sudah Dibuka");
-    setKonfirmasiDibuka((prev) => prev + 1);
-  };
 
   return (
     <div className="popup-overlay" onClick={onClose}>
@@ -140,7 +184,7 @@ function DetilInfo({ report, onClose }: DetilInfoProps) {
                   Ditutup
                 </span>
 
-                <strong>{konfirmasiDitutup}</strong>
+                <strong>{konfirmasi.ditutup}</strong>
               </div>
 
               <div className="confirmation-count-row">
@@ -149,7 +193,7 @@ function DetilInfo({ report, onClose }: DetilInfoProps) {
                   Dibuka
                 </span>
 
-                <strong>{konfirmasiDibuka}</strong>
+                <strong>{konfirmasi.dibuka}</strong>
               </div>
             </div>
           </div>
