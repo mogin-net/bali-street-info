@@ -39,7 +39,7 @@ const PreviewMapController = ({ startPoint, endPoint }: MapPreviewProps) => {
   return null;
 };
 
-const mapPreview = ({ startPoint, endPoint }: MapPreviewProps) => {
+const MapPreview = ({ startPoint, endPoint }: MapPreviewProps) => {
   if (!startPoint || !endPoint) {
     return (
       <div className="flex h-40 items-center justify-center rounded-xl border bg-gray-50 text-sm text-gray-400"></div>
@@ -94,4 +94,4 @@ const mapPreview = ({ startPoint, endPoint }: MapPreviewProps) => {
   );
 };
 
-export default mapPreview;
+export default MapPreview;

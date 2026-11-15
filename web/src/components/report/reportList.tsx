@@ -381,8 +381,7 @@ const ReportList = ({
             </DialogTitle>
 
             <DialogDescription className="text-center text-xs leading-relaxed">
-              Terima kasih telah berkontribusi memberikan informasi penutupan
-              jalan.
+              Terima kasih telah mengisi informasi penutupan jalan.
             </DialogDescription>
           </DialogHeader>
         </DialogContent>

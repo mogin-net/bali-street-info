@@ -15,7 +15,7 @@ import {
 
 import { Button } from "../../ui/button";
 import type { LocationPoint } from "../reportList";
-import { isInsideSanur, SANUR_BOUNDS } from "../sanurBonds";
+// import { isInsideSanur } from "../sanurBonds";
 
 interface ReportPopUpProps {
   startPoint: LocationPoint | null;
@@ -73,10 +73,8 @@ const MapClickHandler = ({
   onChangeStart,
   onChangeEnd,
   onSelectPoint,
-  onRejectPoint,
 }: Pick<ReportPopUpProps, "activePoint" | "onChangeStart" | "onChangeEnd"> & {
   onSelectPoint: () => void;
-  onRejectPoint: () => void;
 }) => {
   useMapEvents({
     click: (event: LeafletMouseEvent) => {
@@ -85,16 +83,7 @@ const MapClickHandler = ({
         lng: event.latlng.lng,
       };
 
-      if (!isInsideSanur(point)) {
-        if (activePoint === "start") {
-          onChangeStart(null);
-        } else {
-          onChangeEnd(null);
-        }
-
-        onRejectPoint();
-        return;
-      }
+      // Batasan Sanur dinonaktifkan: if (!isInsideSanur(point)) return;
 
       if (activePoint === "start") {
         onChangeStart(point);
@@ -162,7 +151,6 @@ const ReportPopUp = ({
   onClose,
 }: ReportPopUpProps) => {
   const [isInitialView, setIsInitialView] = useState(true);
-  const [locationWarning, setLocationWarning] = useState("");
   const initialLocationRequested = useRef(false);
 
   useEffect(() => {
@@ -183,13 +171,7 @@ const ReportPopUp = ({
           lng: position.coords.longitude,
         };
 
-        if (!isInsideSanur(point)) {
-          onChangeStart(null);
-          setLocationWarning(
-            "Lokasi di luar batas Sanur ditolak. Silakan pilih ulang lokasi di dalam batas Sanur.",
-          );
-          return;
-        }
+        // Batasan Sanur dinonaktifkan: if (!isInsideSanur(point)) return;
 
         onChangeStart(point);
       },
@@ -212,15 +194,7 @@ const ReportPopUp = ({
           lng: position.coords.longitude,
         };
 
-        if (!isInsideSanur(point)) {
-          onChangeStart(null);
-          setLocationWarning(
-            "Lokasi di luar batas Sanur ditolak. Silakan pilih ulang lokasi di dalam batas Sanur.",
-          );
-          return;
-        }
-
-        setLocationWarning("");
+        // Batasan Sanur dinonaktifkan: if (!isInsideSanur(point)) return;
         onChangeStart(point);
         onChangeActive("start");
       },
@@ -266,9 +240,6 @@ const ReportPopUp = ({
           <MapContainer
             center={sanurCenter}
             zoom={15}
-            minZoom={14}
-            maxBounds={SANUR_BOUNDS}
-            maxBoundsViscosity={1}
             className="h-full w-full"
             zoomControl
             scrollWheelZoom
@@ -288,16 +259,10 @@ const ReportPopUp = ({
               onChangeEnd={onChangeEnd}
               onSelectPoint={() => {
                 setIsInitialView(false);
-                setLocationWarning("");
               }}
-              onRejectPoint={() =>
-                setLocationWarning(
-                  "Lokasi di luar batas Sanur ditolak. Silakan pilih ulang lokasi di dalam batas Sanur.",
-                )
-              }
             />
 
-            {startPoint && isInsideSanur(startPoint) && (
+            {startPoint && (
               <Marker
                 position={[startPoint.lat, startPoint.lng]}
                 icon={startPinIcon}
@@ -305,7 +270,7 @@ const ReportPopUp = ({
               />
             )}
 
-            {endPoint && isInsideSanur(endPoint) && (
+            {endPoint && (
               <Marker
                 position={[endPoint.lat, endPoint.lng]}
                 icon={endPinIcon}
@@ -325,15 +290,6 @@ const ReportPopUp = ({
           >
             <LocateFixed className="size-5" />
           </Button>
-
-          {locationWarning && (
-            <p
-              role="alert"
-              className="absolute left-4 right-16 top-4 z-[1000] rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900 shadow"
-            >
-              {locationWarning}
-            </p>
-          )}
         </div>
 
         {/* PILIH TITIK */}
@@ -411,12 +367,7 @@ const ReportPopUp = ({
             <Button
               type="button"
               className="h-11"
-              disabled={
-                !startPoint ||
-                !endPoint ||
-                !isInsideSanur(startPoint) ||
-                !isInsideSanur(endPoint)
-              }
+              disabled={!startPoint || !endPoint}
               onClick={onSave}
             >
               Simpan Lokasi
