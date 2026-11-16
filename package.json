@@ -3,5 +3,8 @@
   "private": true,
   "workspaces": [
     "web"
-  ]
+  ],
+  "devDependencies": {
+    "supabase": "^3.1.0"
+  }
 }
