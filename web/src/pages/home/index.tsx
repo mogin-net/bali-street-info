@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   Map as LeafletMap,
@@ -31,7 +37,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { mockReports } from "./data";
+// import { mockReports } from "./data";
+import {
+  getHomeRoadSegments,
+  type HomeRoadSegment,
+} from "../../services/homeService";
+
 import "./style.css";
 
 const BALI_CENTER: [number, number] = [-8.409518, 115.188919];
@@ -71,6 +82,16 @@ function getSanurPosition(result: SearchResult): [number, number] | null {
   return SANUR_BOUNDS.contains(position) ? position : null;
 }
 
+// Buat aman teks dari karakter aneh supaya gak error pas nampil di tooltip peta
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function Home() {
   const navigate = useNavigate();
 
@@ -83,8 +104,11 @@ function Home() {
   const lastSearchAtRef = useRef<number | null>(null);
 
   const [activeCategory, setActiveCategory] = useState<Category>("Semua");
-
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+  const [roadSegments, setRoadSegments] = useState<HomeRoadSegment[]>([]);
+  const [isLoadingReports, setIsLoadingReports] = useState(true);
+  const [reportsError, setReportsError] = useState<string | null>(null);
 
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
@@ -93,6 +117,41 @@ function Home() {
   const [searchMessage, setSearchMessage] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
+  // Ambil data jalan dari database pas halaman pertama kali dibuka
+  useEffect(() => {
+    let active = true;
+
+    async function loadRoadSegments() {
+      try {
+        setIsLoadingReports(true);
+        setReportsError(null);
+
+        const segments = await getHomeRoadSegments();
+
+        if (active) {
+          setRoadSegments(segments);
+        }
+      } catch (error) {
+        console.error("Gagal mengambil laporan Home:", error);
+
+        if (active) {
+          setReportsError("Gagal memuat data penutupan jalan.");
+        }
+      } finally {
+        if (active) {
+          setIsLoadingReports(false);
+        }
+      }
+    }
+
+    void loadRoadSegments();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Siapin peta Leaflet dan aktifin GPS pas awal load
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container) return;
@@ -137,7 +196,6 @@ function Home() {
 
     const handleLocationError = () => {
       setIsLocating(false);
-
       setLocationMessage(
         "Lokasi tidak ditemukan. Periksa izin lokasi di browser.",
       );
@@ -184,146 +242,155 @@ function Home() {
     };
   }, []);
 
-  function renderReports(
-    categoryToFilter: Category,
-    currentSelectedId: string | null,
-  ) {
-    const layerGroup = reportsLayerRef.current;
-    if (!layerGroup) return;
+  // Gambar garis rute jalan dan ikon status di peta berdasarkan data yang ada
+  const renderReports = useCallback(
+    (categoryToFilter: Category, currentSelectedId: string | null) => {
+      const layerGroup = reportsLayerRef.current;
+      if (!layerGroup) return;
 
-    layerGroup.clearLayers();
+      layerGroup.clearLayers();
 
-    const displayedReports =
-      categoryToFilter === "Semua"
-        ? mockReports
-        : mockReports.filter((report) => report.category === categoryToFilter);
+      const displayedReports =
+        categoryToFilter === "Semua"
+          ? roadSegments
+          : roadSegments.filter(
+              (report) => report.category === categoryToFilter,
+            );
 
-    displayedReports.forEach((report) => {
-      if (report.roadPath.length < 2) return;
+      displayedReports.forEach((report) => {
+        if (report.roadPath.length < 2) return;
 
-      const isClosed = report.status === "ditutup";
-      const isSelected = currentSelectedId === report.id;
-      const statusColor = isClosed ? "#DC2626" : "#16A34A";
+        const isClosed = report.status === "closed";
+        const isSelected = currentSelectedId === report.reportId;
+        const statusColor = isClosed ? "#DC2626" : "#16A34A";
 
-      const polyline = new Polyline(report.roadPath, {
-        color: statusColor,
-        weight: isSelected ? 8 : 6,
-        opacity: isSelected ? 1 : 0.85,
-        lineCap: "round",
-        lineJoin: "round",
-      });
-
-      polyline.bindTooltip(
-        `<div>
-          <strong>${report.streetName}</strong>
-          <br/>
-          <span style="color:${statusColor};font-weight:600">
-            ${isClosed ? "Jalan ditutup" : "Jalan sudah dibuka"}
-          </span>
-        </div>`,
-        { sticky: true },
-      );
-
-      polyline.addTo(layerGroup);
-
-      const markerPosition = polyline.getCenter();
-
-      polyline.on("click", (event) => {
-        event.originalEvent?.stopPropagation();
-
-        setSelectedReportId((prev) => (prev === report.id ? null : report.id));
-
-        mapRef.current?.panTo(markerPosition, {
-          animate: true,
+        // Bikin garis rute di peta
+        const polyline = new Polyline(report.roadPath, {
+          color: statusColor,
+          weight: isSelected ? 8 : 6,
+          opacity: isSelected ? 1 : 0.85,
+          lineCap: "round",
+          lineJoin: "round",
         });
-      });
 
-      const size = isSelected ? 34 : 26;
-      const anchor = size / 2;
-      const iconSize = isSelected ? 16 : 12;
+        polyline.bindTooltip(
+          `<div>
+            <strong>${escapeHtml(report.streetName ?? "Jalan tanpa nama")}</strong>
+            <br/>
+            <span style="color:${statusColor};font-weight:600">
+              ${isClosed ? "Jalan ditutup" : "Jalan sudah dibuka"}
+            </span>
+          </div>`,
+          { sticky: true },
+        );
 
-      const iconMarkup = renderToStaticMarkup(
-        isClosed ? (
-          <X size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
-        ) : (
-          <Check size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
-        ),
-      );
+        polyline.addTo(layerGroup);
 
-      const statusIcon = new DivIcon({
-        className: `status-marker-icon ${
-          isSelected ? "status-marker-selected" : ""
-        }`,
-        iconSize: [size, size],
-        iconAnchor: [anchor, anchor],
-        html: `
-          <div style="
-            width:${size}px;
-            height:${size}px;
-            background-color:${statusColor};
-            border:${isSelected ? "3px" : "2.5px"} solid #FFFFFF;
-            border-radius:50%;
-            box-shadow:${
-              isSelected
-                ? "0 0 0 3px #191919, 0 4px 12px rgba(0,0,0,0.45)"
-                : "0 2px 5px rgba(0,0,0,0.3)"
-            };
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            color:#FFFFFF;
-            box-sizing:border-box;
-            cursor:pointer;
-            transition:transform 0.2s ease;
-          ">
-            ${iconMarkup}
-          </div>
-        `,
-      });
+        const markerPosition = report.markerPosition;
 
-      const marker = new Marker(markerPosition, {
-        icon: statusIcon,
-      });
+        polyline.on("click", (event) => {
+          event.originalEvent?.stopPropagation();
 
-      marker.bindTooltip(
-        `<div>
-          <strong>${report.streetName}</strong>
-          <br/>
-          <span>${report.title}</span>
-        </div>`,
-        {
-          direction: "top",
-          offset: [0, -10],
-        },
-      );
+          setSelectedReportId((prev) =>
+            prev === report.reportId ? null : report.reportId,
+          );
 
-      marker.on("click", (event) => {
-        event.originalEvent?.stopPropagation();
-
-        setSelectedReportId(report.id);
-        navigate(`/detail/${report.id}`);
-
-        mapRef.current?.panTo(markerPosition, {
-          animate: true,
+          mapRef.current?.panTo(markerPosition, {
+            animate: true,
+          });
         });
+
+        const size = isSelected ? 34 : 26;
+        const anchor = size / 2;
+        const iconSize = isSelected ? 16 : 12;
+
+        const iconMarkup = renderToStaticMarkup(
+          isClosed ? (
+            <X size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
+          ) : (
+            <Check size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
+          ),
+        );
+
+        // Bikin tampilan ikon marker-nya
+        const statusIcon = new DivIcon({
+          className: `status-marker-icon ${
+            isSelected ? "status-marker-selected" : ""
+          }`,
+          iconSize: [size, size],
+          iconAnchor: [anchor, anchor],
+          html: `
+            <div style="
+              width:${size}px;
+              height:${size}px;
+              background-color:${statusColor};
+              border:${isSelected ? "3px" : "2.5px"} solid #FFFFFF;
+              border-radius:50%;
+              box-shadow:${
+                isSelected
+                  ? "0 0 0 3px #191919, 0 4px 12px rgba(0,0,0,0.45)"
+                  : "0 2px 5px rgba(0,0,0,0.3)"
+              };
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              color:#FFFFFF;
+              box-sizing:border-box;
+              cursor:pointer;
+              transition:transform 0.2s ease;
+            ">
+              ${iconMarkup}
+            </div>
+          `,
+        });
+
+        const marker = new Marker(markerPosition, {
+          icon: statusIcon,
+        });
+
+        marker.bindTooltip(
+          `<div>
+            <strong>${escapeHtml(report.streetName ?? "Jalan tanpa nama")}</strong>
+            <br/>
+            <span>${escapeHtml(report.tooltipText)}</span>
+          </div>`,
+          {
+            direction: "top",
+            offset: [0, -10],
+          },
+        );
+
+        marker.on("click", (event) => {
+          event.originalEvent?.stopPropagation();
+
+          setSelectedReportId(report.reportId);
+          navigate(`/detail/${report.reportId}`);
+
+          mapRef.current?.panTo(markerPosition, {
+            animate: true,
+          });
+        });
+
+        marker.addTo(layerGroup);
+
+        if (isSelected) {
+          marker.openTooltip();
+        }
       });
+    },
+    [roadSegments, navigate],
+  );
 
-      marker.addTo(layerGroup);
-
-      if (isSelected) {
-        marker.openTooltip();
-      }
-    });
-  }
-
+  // Update tampilan peta kalau kategori atau datanya berubah
   useEffect(() => {
     renderReports(activeCategory, selectedReportId);
-  }, [activeCategory, selectedReportId]);
+  }, [activeCategory, selectedReportId, renderReports]);
 
   function chooseCategory(category: Category) {
     setActiveCategory(category);
   }
 
+  // Tombol buat ngecek dan geser peta ke lokasi HP kamu sekarang
   function goToMyLocation() {
     const map = mapRef.current;
 
@@ -379,6 +446,7 @@ function Home() {
     );
   }
 
+  // Geser dan tandai peta ke hasil jalan yang diklik dari daftar pencarian
   function showSearchResult(result: SearchResult, closeList = false) {
     const map = mapRef.current;
     const position = getSanurPosition(result);
@@ -409,6 +477,7 @@ function Home() {
     }
   }
 
+  // Proses cari nama jalan pakai API OpenStreetMap khusus area Sanur
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -598,6 +667,19 @@ function Home() {
           role="region"
           aria-label="Peta interaktif wilayah Sanur"
         />
+
+        {(isLoadingReports || reportsError || roadSegments.length === 0) && (
+          <div
+            role="status"
+            className="pointer-events-none absolute left-1/2 top-20 z-[1090] w-max max-w-[calc(100%-24px)] -translate-x-1/2 rounded-lg bg-white/95 px-4 py-2 text-center text-xs text-[#191919] shadow-md"
+          >
+            {isLoadingReports
+              ? "Memuat data penutupan jalan..."
+              : reportsError
+                ? reportsError
+                : "Belum ada laporan penutupan jalan."}
+          </div>
+        )}
 
         <nav
           aria-label="Filter kategori laporan"
