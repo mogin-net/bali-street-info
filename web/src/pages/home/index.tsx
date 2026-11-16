@@ -40,7 +40,9 @@ import { Input } from "@/components/ui/input";
 // import { mockReports } from "./data";
 import {
   getHomeRoadSegments,
+  searchHomeStreets,
   type HomeRoadSegment,
+  type HomeStreetSearchResult,
 } from "../../services/homeService";
 
 import "./style.css";
@@ -64,12 +66,7 @@ const legends = [
 
 type Category = (typeof categories)[number]["name"];
 
-type SearchResult = {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-};
+type SearchResult = HomeStreetSearchResult;
 
 function getSanurPosition(result: SearchResult): [number, number] | null {
   const lat = Number(result.lat);
@@ -126,7 +123,7 @@ function Home() {
         setIsLoadingReports(true);
         setReportsError(null);
 
-        const segments = await getHomeRoadSegments();
+        const segments = await getHomeRoadSegments(activeCategory);
 
         if (active) {
           setRoadSegments(segments);
@@ -149,7 +146,7 @@ function Home() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [activeCategory]);
 
   // Siapin peta Leaflet dan aktifin GPS pas awal load
   useEffect(() => {
@@ -244,20 +241,13 @@ function Home() {
 
   // Gambar garis rute jalan dan ikon status di peta berdasarkan data yang ada
   const renderReports = useCallback(
-    (categoryToFilter: Category, currentSelectedId: string | null) => {
+    (currentSelectedId: string | null) => {
       const layerGroup = reportsLayerRef.current;
       if (!layerGroup) return;
 
       layerGroup.clearLayers();
 
-      const displayedReports =
-        categoryToFilter === "Semua"
-          ? roadSegments
-          : roadSegments.filter(
-              (report) => report.category === categoryToFilter,
-            );
-
-      displayedReports.forEach((report) => {
+      roadSegments.forEach((report) => {
         if (report.roadPath.length < 2) return;
 
         const isClosed = report.status === "closed";
@@ -383,8 +373,8 @@ function Home() {
 
   // Update tampilan peta kalau kategori atau datanya berubah
   useEffect(() => {
-    renderReports(activeCategory, selectedReportId);
-  }, [activeCategory, selectedReportId, renderReports]);
+    renderReports(selectedReportId);
+  }, [selectedReportId, renderReports]);
 
   function chooseCategory(category: Category) {
     setActiveCategory(category);
@@ -510,48 +500,17 @@ function Home() {
     setSearchResults([]);
     setSearchMessage("");
 
-    const params = new URLSearchParams({
-      q: searchTerm,
-      format: "jsonv2",
-      limit: "8",
-      countrycodes: "id",
-      viewbox: [
-        SANUR_BOUNDS.getWest(),
-        SANUR_BOUNDS.getNorth(),
-        SANUR_BOUNDS.getEast(),
-        SANUR_BOUNDS.getSouth(),
-      ].join(","),
-      bounded: "1",
-    });
-
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-        {
-          signal: controller.signal,
-          headers: { Accept: "application/json" },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Layanan pencarian sedang bermasalah.");
-      }
-
-      const data = (await response.json()) as SearchResult[];
+      const data = await searchHomeStreets(searchTerm);
 
       if (controller.signal.aborted) return;
-
-      const sanurResults = data.filter(
-        (result) => getSanurPosition(result) !== null,
-      );
-
-      if (sanurResults.length === 0) {
+      if (data.length === 0) {
         setSearchMessage("Jalan tidak ditemukan di area Sanur pada peta.");
         return;
       }
 
-      setSearchResults(sanurResults);
-      showSearchResult(sanurResults[0]);
+      setSearchResults(data);
+      showSearchResult(data[0]);
     } catch (error) {
       if (controller.signal.aborted) return;
 

@@ -34,11 +34,16 @@ export interface HomeRoadSegment {
   tooltipText: string;
 }
 
-export async function getHomeRoadSegments():
-  Promise<HomeRoadSegment[]> {
+export async function getHomeRoadSegments(
+  category: string = "Semua",
+): Promise<HomeRoadSegment[]> {
 
   const { data, error } = await supabase.rpc(
-    "get_home_road_segments"
+    "get_home_road_segments",
+    {
+      p_category:
+        category === "Semua" ? null : category,
+    }
   );
 
   if (error) {
@@ -74,4 +79,22 @@ export async function getHomeRoadSegments():
           : "sudah dibuka kembali"
       }`,
   }));
+}
+
+export interface HomeStreetSearchResult {
+  place_id: string;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+export async function searchHomeStreets(
+  query: string,
+): Promise<HomeStreetSearchResult[]> {
+  const { data, error } = await supabase.rpc("search_home_streets", {
+    p_query: query.trim(),
+  });
+
+  if (error) throw error;
+  return (data ?? []) as HomeStreetSearchResult[];
 }
