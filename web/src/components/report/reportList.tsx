@@ -39,6 +39,15 @@ interface ReportFormProps {
   onOpenLocation: (point?: "start" | "end") => void;
 }
 
+interface ReportPayload {
+  startPoint: LocationPoint;
+  endPoint: LocationPoint;
+  category: string;
+  isCarForbidden: boolean;
+  isMotorcycleForbidden: boolean;
+  description: string | null;
+}
+
 const formatCoordinate = (point: LocationPoint) =>
   `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`;
 
@@ -50,6 +59,9 @@ const ReportList = ({
   const navigate = useNavigate();
 
   // STATE POPUP
+  const [pendingReport, setPendingReport] = useState<ReportPayload | null>(
+    null,
+  );
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
@@ -64,7 +76,6 @@ const ReportList = ({
     return () => window.clearTimeout(timer);
   }, [isSuccessOpen, navigate]);
 
-  // VALIDASI FORM
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -79,25 +90,46 @@ const ReportList = ({
       return;
     }
 
-    // Validasi akses kendaraan
+    // Ambil data formulir
     const formData = new FormData(form);
-    const vehicles = formData.getAll("vehicle");
+    const vehicles = formData.getAll("vehicle").map(String);
 
+    // Validasi akses kendaraan
     if (vehicles.length === 0) {
       alert("Silakan pilih minimal satu akses kendaraan.");
       return;
     }
 
-    // Semua validasi berhasil
+    // Ambil deskripsi (opsional)
+    const description = String(formData.get("description") ?? "").trim();
+
+    // Susun data laporan
+    const reportData: ReportPayload = {
+      startPoint,
+      endPoint,
+      category: String(formData.get("category")),
+      isCarForbidden: vehicles.includes("mobil"),
+      isMotorcycleForbidden: vehicles.includes("motor"),
+      description: description || null,
+    };
+
+    // Simpan data sementara
+    setPendingReport(reportData);
+
+    // Tampilkan popup konfirmasi
     setIsConfirmOpen(true);
   };
 
-  // KONFIRMASI PENGIRIMAN
   const handleConfirmSubmit = () => {
-    setIsConfirmOpen(false);
+    if (!pendingReport) return;
 
-    // TODO: Proses pengiriman laporan ke database
-    console.log("Laporan dikonfirmasi");
+    // Tampilkan data laporan dalam bentuk object
+    console.log("Data laporan:", pendingReport);
+
+    // Tampilkan data laporan dalam format JSON
+    console.log("Data laporan (JSON):", JSON.stringify(pendingReport, null, 2));
+
+    setIsConfirmOpen(false);
 
     // Tampilkan notifikasi berhasil
     setIsSuccessOpen(true);
