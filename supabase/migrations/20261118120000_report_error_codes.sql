@@ -53,16 +53,6 @@ BEGIN
             MESSAGE = 'Tidak ada jalan di sekitar titik yang dipilih';
     END IF;
 
-    IF ST_Distance(start_point::geography,
-                   matched_street.coordinates::geography) > 50
-       OR ST_Distance(end_point::geography,
-                      matched_street.coordinates::geography) > 50
-    THEN
-        RAISE EXCEPTION USING
-            ERRCODE = 'P1003',
-            MESSAGE = 'Titik awal dan akhir harus berada dekat jalan yang sama';
-    END IF;
-
     start_fraction := ST_LineLocatePoint(
         matched_street.coordinates,
         ST_ClosestPoint(matched_street.coordinates, start_point)
@@ -76,12 +66,6 @@ BEGIN
         start_fraction := end_fraction + start_fraction;
         end_fraction := start_fraction - end_fraction;
         start_fraction := start_fraction - end_fraction;
-    END IF;
-
-    IF start_fraction = end_fraction THEN
-        RAISE EXCEPTION USING
-            ERRCODE = 'P1004',
-            MESSAGE = 'Titik awal dan akhir terlalu berdekatan';
     END IF;
 
     INSERT INTO public.reports (
