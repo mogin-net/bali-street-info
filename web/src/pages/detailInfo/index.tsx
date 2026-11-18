@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MapPin,
   Construction,
@@ -12,85 +12,132 @@ import {
 
 import "./style.css";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { mockReports } from "../home/data";
-
-type ConfirmationData = {
-  closed: number;
-  opened: number;
-};
-
-function getInitialConfirmation(reportId: string): ConfirmationData {
-  const saved = localStorage.getItem(`road-confirmation-${reportId}`);
-
-  if (saved) {
-    try {
-      return JSON.parse(saved) as ConfirmationData;
-    } catch {
-      console.error("Confirmation data is invalid");
-    }
-  }
-
-  return {
-    closed: 0,
-    opened: 0,
-  };
-}
+import {
+  getReportDetail,
+  submitReportConfirmation,
+  type ReportDetail as ReportDetailData,
+} from "@/services/detailInfoService";
+import { getReportErrorMessage } from "@/services/reportService";
 
 function DetailInfo() {
   const { reportId } = useParams();
   const navigate = useNavigate();
-  const report = mockReports.find((item) => item.id === reportId);
+  const [report, setReport] = useState<ReportDetailData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [voteError, setVoteError] = useState<string | null>(null);
+  const [voteMessage, setVoteMessage] = useState<string | null>(null);
+  const [isSubmittingVote, setIsSubmittingVote] = useState(false);
 
   const onClose = () => navigate("/");
 
-  const [confirmation, setConfirmation] = useState<ConfirmationData>(() =>
-    getInitialConfirmation(report?.id ?? ""),
-  );
+  useEffect(() => {
+    if (!reportId) return;
 
-  const [roadStatus, setRoadStatus] = useState(
-    report?.status === "ditutup" ? "Ditutup" : "Sudah Dibuka",
-  );
+    let isCurrent = true;
+    setIsLoading(true);
+    setLoadError(null);
 
-  if (!report) {
-    return <Navigate to="/" replace />;
+    getReportDetail(reportId)
+      .then((data) => {
+        if (isCurrent) setReport(data);
+      })
+      .catch((error) => {
+        console.error("Gagal memuat detail laporan:", error);
+        if (isCurrent) setLoadError("Detail laporan gagal dimuat.");
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reportId]);
+
+  if (!reportId) return <Navigate to="/" replace />;
+
+  if (isLoading) {
+    return <div className="popup-overlay">Memuat detail laporan...</div>;
   }
+
+  if (loadError) {
+    return (
+      <div className="popup-overlay" onClick={onClose}>
+        <div
+          className="popup"
+          role="alert"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <p>{loadError}</p>
+          <button className="popup-close" onClick={onClose}>
+            Kembali ke peta
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!report) return <Navigate to="/" replace />;
+
+  const roadStatus = {
+    closed: "Ditutup",
+    open: "Sudah Dibuka",
+    expired: "Kedaluwarsa",
+  }[report.status];
 
   const roadData = {
     name: report.streetName,
     location: "Sanur, Denpasar Selatan, Bali",
-    category: report.category,
-    reportTime: "09 November 2026, 09.30 WITA",
-    motorcycleAccess: "No access",
-    carAccess: "No access",
+    category:
+      report.category.charAt(0).toUpperCase() + report.category.slice(1),
+    reportTime: new Intl.DateTimeFormat("id-ID", {
+      dateStyle: "long",
+      timeStyle: "short",
+      timeZone: "Asia/Makassar",
+    }).format(new Date(report.dtCreated)),
+    motorcycleAccess: report.isMotorcycleForbidden
+      ? "Tidak dapat dilewati"
+      : "Dapat dilewati",
+    carAccess: report.isCarForbidden
+      ? "Tidak dapat dilewati"
+      : "Dapat dilewati",
   };
 
-  const saveConfirmation = (data: ConfirmationData) => {
-    localStorage.setItem(
-      `road-confirmation-${report.id}`,
-      JSON.stringify(data),
-    );
+  const submitConfirmation = async (isStillClosed: boolean) => {
+    if (isSubmittingVote || report.status === "expired") return;
 
-    setConfirmation(data);
-  };
+    try {
+      setIsSubmittingVote(true);
+      setVoteError(null);
+      setVoteMessage(null);
 
-  const handleConfirmClosed = () => {
-    const newData = {
-      ...confirmation,
-      closed: confirmation.closed + 1,
-    };
+      const result = await submitReportConfirmation(
+        report.reportId,
+        isStillClosed,
+      );
+      setReport((current) =>
+        current
+          ? {
+              ...current,
+              status: result.reportStatus,
+              closedCount: result.closedCount,
+              openCount: result.openCount,
+            }
+          : current,
+      );
 
-    saveConfirmation(newData);
-    setRoadStatus("Ditutup");
-  };
-
-  const handleConfirmOpened = () => {
-    const newData = {
-      ...confirmation,
-      opened: confirmation.opened + 1,
-    };
-
-    saveConfirmation(newData);
-    setRoadStatus("Sudah Dibuka");
+      setVoteMessage(
+        result.confirmationRecorded
+          ? "Konfirmasi Anda berhasil disimpan."
+          : "Laporan telah kedaluwarsa; konfirmasi tidak disimpan.",
+      );
+    } catch (error) {
+      console.error("Gagal menyimpan konfirmasi:", error);
+      setVoteError(getReportErrorMessage(error));
+    } finally {
+      setIsSubmittingVote(false);
+    }
   };
 
   const infoItems = [
@@ -106,7 +153,12 @@ function DetailInfo() {
     },
     {
       label: "Status",
-      icon: roadStatus === "Ditutup" ? CircleX : CircleCheck,
+      icon:
+        report.status === "closed"
+          ? CircleX
+          : report.status === "open"
+            ? CircleCheck
+            : Clock,
       value: roadStatus,
     },
     {
@@ -145,10 +197,12 @@ function DetailInfo() {
           </p>
 
           <span className="road-status">
-            {roadStatus === "Ditutup" ? (
+            {report.status === "closed" ? (
               <CircleX size={14} />
-            ) : (
+            ) : report.status === "open" ? (
               <CircleCheck size={14} />
+            ) : (
+              <Clock size={14} />
             )}
             {roadStatus}
           </span>
@@ -183,7 +237,7 @@ function DetailInfo() {
                   Ditutup
                 </span>
 
-                <strong>{confirmation.closed}</strong>
+                <strong>{report.closedCount}</strong>
               </div>
 
               <div className="confirmation-count-row">
@@ -192,7 +246,7 @@ function DetailInfo() {
                   Dibuka
                 </span>
 
-                <strong>{confirmation.opened}</strong>
+                <strong>{report.openCount}</strong>
               </div>
             </div>
           </div>
@@ -201,13 +255,27 @@ function DetailInfo() {
         <div className="road-confirmation">
           <h3>Konfirmasi Kondisi Jalan</h3>
 
+          {report.status === "expired" && (
+            <p role="status">
+              Laporan ini sudah kedaluwarsa dan tidak menerima konfirmasi.
+            </p>
+          )}
+          {voteError && <p role="alert">{voteError}</p>}
+          {voteMessage && <p role="status">{voteMessage}</p>}
+
           <div className="confirmation-buttons">
-            <button onClick={handleConfirmClosed}>
+            <button
+              onClick={() => void submitConfirmation(true)}
+              disabled={isSubmittingVote || report.status === "expired"}
+            >
               <CircleX size={16} />
               Masih Ditutup
             </button>
 
-            <button onClick={handleConfirmOpened}>
+            <button
+              onClick={() => void submitConfirmation(false)}
+              disabled={isSubmittingVote || report.status === "expired"}
+            >
               <CircleCheck size={16} />
               Sudah Dibuka
             </button>

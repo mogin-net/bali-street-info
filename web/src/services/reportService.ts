@@ -4,6 +4,10 @@ import { supabase } from "@/lib/supabase";
 const reportErrorMessages: Record<string, string> = {
   P1001: "Koordinat lokasi tidak valid. Pilih ulang titik awal dan titik akhir.",
   P1002: "Jalan tidak ditemukan di sekitar titik yang dipilih. Silakan pilih ulang lokasi.",
+  P2001: "Sesi anonim belum tersedia. Coba lagi beberapa saat lagi.",
+  P2002: "Laporan tidak ditemukan.",
+  P2003: "Laporan ini sudah kedaluwarsa dan tidak menerima konfirmasi baru.",
+  P2004: "Anda sudah mengirim konfirmasi untuk laporan ini.",
 };
 
 export function getReportErrorMessage(error: unknown) {
@@ -15,11 +19,11 @@ export function getReportErrorMessage(error: unknown) {
   ) {
     return (
       reportErrorMessages[error.code] ??
-      "Laporan belum dapat disimpan. Periksa koneksi lalu coba lagi."
+      "Permintaan belum dapat diproses. Periksa koneksi lalu coba lagi."
     );
   }
 
-  return "Laporan belum dapat disimpan. Periksa koneksi lalu coba lagi.";
+  return "Permintaan belum dapat diproses. Periksa koneksi lalu coba lagi.";
 }
 
 interface ReportPayload {
