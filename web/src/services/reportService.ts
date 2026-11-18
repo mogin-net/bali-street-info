@@ -1,5 +1,6 @@
 import type { LocationPoint } from "@/components/report/reportList";
 import { supabase } from "@/lib/supabase";
+import { ensureAnonymousSession } from "@/services/anonymousSession";
 
 const reportErrorMessages: Record<string, string> = {
   P1001: "Koordinat lokasi tidak valid. Pilih ulang titik awal dan titik akhir.",
@@ -36,6 +37,8 @@ interface ReportPayload {
 }
 
 export async function submitReport(payload: ReportPayload) {
+  await ensureAnonymousSession();
+
   const { data, error } = await supabase.rpc("submit_street_report", {
     p_start_lat: payload.startPoint.lat,
     p_start_lng: payload.startPoint.lng,

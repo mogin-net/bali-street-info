@@ -54,16 +54,17 @@ CREATE TABLE public.reports (
 
     dt_created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
+    last_confirmed_at TIMESTAMPTZ,
+
     valid_from TIMESTAMPTZ,
 
     valid_until TIMESTAMPTZ,
 
     actual_opened_at TIMESTAMPTZ,
 
-    status VARCHAR(20) NOT NULL DEFAULT 'pending'
+    status VARCHAR(20) NOT NULL DEFAULT 'closed'
         CHECK (
             status IN (
-                'pending',
                 'open',
                 'closed',
                 'expired'
@@ -188,6 +189,10 @@ CREATE INDEX idx_confirmations_user
     ON public.report_confirmations(user_uuid)
     WHERE user_uuid IS NOT NULL;
 
+CREATE UNIQUE INDEX idx_confirmations_one_per_user_report
+    ON public.report_confirmations(report_uuid, user_uuid)
+    WHERE user_uuid IS NOT NULL;
+
 
 -- =====================================================
 -- 7. ENABLE ROW LEVEL SECURITY
@@ -210,21 +215,20 @@ ALTER TABLE public.report_confirmations
 -- 8. GRANT PERMISSIONS
 -- =====================================================
 
+REVOKE ALL
+ON public.streets,
+   public.reports,
+   public.report_street_segments,
+   public.report_confirmations
+FROM PUBLIC, anon, authenticated;
+
 GRANT SELECT
 ON public.streets
 TO anon, authenticated;
 
-GRANT SELECT, INSERT
-ON public.reports
-TO anon, authenticated;
-
-GRANT SELECT, INSERT
-ON public.report_street_segments
-TO anon, authenticated;
-
-GRANT SELECT, INSERT
+GRANT SELECT
 ON public.report_confirmations
-TO anon, authenticated;
+TO authenticated;
 
 
 -- =====================================================
@@ -240,78 +244,9 @@ USING (TRUE);
 
 
 -- =====================================================
--- 10. RLS: REPORTS
--- Pengunjung dapat melihat laporan
--- =====================================================
-
-CREATE POLICY "Public can read reports"
-ON public.reports
-FOR SELECT
-TO anon, authenticated
-USING (TRUE);
-
-
--- Pengguna dapat membuat laporan anonim atau login
-CREATE POLICY "Public can create reports"
-ON public.reports
-FOR INSERT
-TO anon, authenticated
-WITH CHECK (
-    user_uuid IS NULL
-    OR user_uuid = auth.uid()
-);
-
-
--- =====================================================
--- 11. RLS: REPORT STREET SEGMENTS
--- Pengunjung dapat membaca rentang penutupan
--- =====================================================
-
-CREATE POLICY "Public can read report segments"
-ON public.report_street_segments
-FOR SELECT
-TO anon, authenticated
-USING (TRUE);
-
-
-CREATE POLICY "Public can create report segments"
-ON public.report_street_segments
-FOR INSERT
-TO anon, authenticated
-WITH CHECK (
-    EXISTS (
-        SELECT 1
-        FROM public.reports r
-        WHERE r.uuid = report_uuid
-          AND (
-              r.user_uuid IS NULL
-              OR r.user_uuid = auth.uid()
-          )
-    )
-);
-
-
--- =====================================================
--- 12. RLS: REPORT CONFIRMATIONS
+-- 10. RLS: REPORT CONFIRMATIONS
 -- Pengunjung dapat memberikan konfirmasi
 -- =====================================================
-
-CREATE POLICY "Public can create confirmations"
-ON public.report_confirmations
-FOR INSERT
-TO anon, authenticated
-WITH CHECK (
-    (
-        auth.uid() IS NULL
-        AND user_uuid IS NULL
-    )
-    OR
-    (
-        auth.uid() IS NOT NULL
-        AND user_uuid = auth.uid()
-    )
-);
-
 
 -- Pengguna login hanya dapat membaca konfirmasinya sendiri
 CREATE POLICY "Users can read own confirmations"
@@ -324,7 +259,7 @@ USING (
 
 
 -- =====================================================
--- 13. COMMENTS
+-- 11. COMMENTS
 -- =====================================================
 
 COMMENT ON TABLE public.streets IS

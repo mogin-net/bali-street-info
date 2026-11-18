@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { ensureAnonymousSession } from "@/services/anonymousSession";
 
 export type ReportStatus = "closed" | "open" | "expired";
 
@@ -64,15 +65,6 @@ export async function getReportDetail(reportId: string) {
     closedCount: Number(row.closed_count),
     openCount: Number(row.open_count),
   } satisfies ReportDetail;
-}
-
-async function ensureAnonymousSession() {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  if (data.session) return;
-
-  const { error: signInError } = await supabase.auth.signInAnonymously();
-  if (signInError) throw signInError;
 }
 
 export async function submitReportConfirmation(
