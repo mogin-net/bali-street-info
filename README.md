@@ -120,4 +120,6 @@ psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' \
       LIMIT 5;"
 ```
 
+```
 Memanggil fungsi lagi untuk OSM Way ID yang sama akan memperbarui ruas yang sudah ada, bukan membuat baris duplikat.
+```

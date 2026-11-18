@@ -20,6 +20,12 @@ import type { LocationPoint } from "../reportList";
 interface ReportPopUpProps {
   startPoint: LocationPoint | null;
   endPoint: LocationPoint | null;
+  startStreetName: string | null;
+  endStreetName: string | null;
+  isResolvingStart: boolean;
+  isResolvingEnd: boolean;
+  startStreetLookupFailed: boolean;
+  endStreetLookupFailed: boolean;
   activePoint: "start" | "end";
   onChangeActive: (point: "start" | "end") => void;
   onChangeStart: (point: LocationPoint | null) => void;
@@ -142,6 +148,12 @@ const MapViewportHandler = ({ point }: { point: LocationPoint | null }) => {
 const ReportPopUp = ({
   startPoint,
   endPoint,
+  startStreetName,
+  endStreetName,
+  isResolvingStart,
+  isResolvingEnd,
+  startStreetLookupFailed,
+  endStreetLookupFailed,
   activePoint,
   onChangeActive,
   onChangeStart,
@@ -330,9 +342,30 @@ const ReportPopUp = ({
 
                 <p className="truncate text-[10px] text-gray-500">
                   {startPoint
-                    ? `${startPoint.lat.toFixed(5)}, ${startPoint.lng.toFixed(5)}`
+                    ? isResolvingStart
+                      ? "Mencari nama jalan..."
+                      : startStreetLookupFailed
+                        ? "Nama jalan gagal diperiksa"
+                        : (startStreetName ?? "Nama jalan tidak ditemukan")
                     : "Belum dipilih"}
                 </p>
+                {startPoint &&
+                  !isResolvingStart &&
+                  !startStreetLookupFailed &&
+                  !startStreetName && (
+                    <p
+                      className="mt-1 text-[10px] text-amber-700"
+                      role="status"
+                    >
+                      Nama jalan tidak ditemukan/berada di luar batas daerah.
+                      Geser titik ke ruas jalan yang benar.
+                    </p>
+                  )}
+                {startPoint && startStreetLookupFailed && (
+                  <p className="mt-1 text-[10px] text-amber-700" role="status">
+                    Nama jalan gagal didapat. Silahkan pilih ulang titik ini.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -345,9 +378,31 @@ const ReportPopUp = ({
 
                 <p className="truncate text-[10px] text-gray-500">
                   {endPoint
-                    ? `${endPoint.lat.toFixed(5)}, ${endPoint.lng.toFixed(5)}`
+                    ? isResolvingEnd
+                      ? "Mencari nama jalan..."
+                      : endStreetLookupFailed
+                        ? "Nama jalan gagal diperiksa"
+                        : (endStreetName ?? "Nama jalan tidak ditemukan")
                     : "Belum dipilih"}
                 </p>
+                {endPoint &&
+                  !isResolvingEnd &&
+                  !endStreetLookupFailed &&
+                  !endStreetName && (
+                    <p
+                      className="mt-1 text-[10px] text-amber-700"
+                      role="status"
+                    >
+                      Nama jalan tidak ditemukan/berada di luar batas daerah.
+                      Geser titik ke ruas jalan yang benar.{" "}
+                    </p>
+                  )}
+                {endPoint && endStreetLookupFailed && (
+                  <p className="mt-1 text-[10px] text-amber-700" role="status">
+                    Nama jalan gagal didapat. Silahkan pilih Nama jalan gagal
+                    diperiksa. Silahkan pilih ulang titik ini. ulang titik ini.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -367,7 +422,16 @@ const ReportPopUp = ({
             <Button
               type="button"
               className="h-11"
-              disabled={!startPoint || !endPoint}
+              disabled={
+                !startPoint ||
+                !endPoint ||
+                isResolvingStart ||
+                isResolvingEnd ||
+                startStreetLookupFailed ||
+                endStreetLookupFailed ||
+                !startStreetName ||
+                !endStreetName
+              }
               onClick={onSave}
             >
               Simpan Lokasi

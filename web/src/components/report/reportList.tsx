@@ -1,5 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  getReportErrorMessage,
+  submitReport,
+} from "@/services/reportService";
 
 import {
   Dialog,
@@ -36,6 +40,12 @@ export interface LocationPoint {
 interface ReportFormProps {
   startPoint: LocationPoint | null;
   endPoint: LocationPoint | null;
+  startStreetName: string | null;
+  endStreetName: string | null;
+  isResolvingStart: boolean;
+  isResolvingEnd: boolean;
+  startStreetLookupFailed: boolean;
+  endStreetLookupFailed: boolean;
   onOpenLocation: (point?: "start" | "end") => void;
 }
 
@@ -48,12 +58,15 @@ interface ReportPayload {
   description: string | null;
 }
 
-const formatCoordinate = (point: LocationPoint) =>
-  `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`;
-
 const ReportList = ({
   startPoint,
   endPoint,
+  startStreetName,
+  endStreetName,
+  isResolvingStart,
+  isResolvingEnd,
+  startStreetLookupFailed,
+  endStreetLookupFailed,
   onOpenLocation,
 }: ReportFormProps) => {
   const navigate = useNavigate();
@@ -62,8 +75,14 @@ const ReportList = ({
   const [pendingReport, setPendingReport] = useState<ReportPayload | null>(
     null,
   );
+
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+
+  // STATE PENGIRIMAN
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // REDIRECT KE HOMEPAGE SETELAH NOTIFIKASI
   useEffect(() => {
@@ -78,15 +97,43 @@ const ReportList = ({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setValidationError(null);
 
     const form = event.currentTarget;
 
     // Validasi kategori wajib
-    if (!form.reportValidity()) return;
+    if (!form.reportValidity()) {
+      setValidationError("Silakan pilih kategori laporan.");
+      return;
+    }
 
     // Validasi lokasi
     if (!startPoint || !endPoint) {
-      alert("Silakan pilih lokasi titik awal dan titik akhir.");
+      setValidationError("Silakan pilih lokasi titik awal dan titik akhir.");
+      return;
+    }
+
+    if (isResolvingStart || isResolvingEnd) {
+      setValidationError("Tunggu sampai nama jalan kedua titik selesai diperiksa.");
+      return;
+    }
+
+    if (startStreetLookupFailed || endStreetLookupFailed) {
+      setValidationError(
+        "Nama jalan gagal diperiksa. Silakan buka kembali peta dan pilih ulang titik yang bermasalah.",
+      );
+      return;
+    }
+
+    const missingStreetPoints = [
+      !startStreetName ? "titik awal" : null,
+      !endStreetName ? "titik akhir" : null,
+    ].filter((point): point is string => point !== null);
+
+    if (missingStreetPoints.length > 0) {
+      setValidationError(
+        `Nama jalan ${missingStreetPoints.join(" dan ")} tidak ditemukan. Silakan pilih ulang titik tersebut di peta sebelum mengirim laporan.`,
+      );
       return;
     }
 
@@ -96,7 +143,7 @@ const ReportList = ({
 
     // Validasi akses kendaraan
     if (vehicles.length === 0) {
-      alert("Silakan pilih minimal satu akses kendaraan.");
+      setValidationError("Silakan pilih minimal satu akses kendaraan.");
       return;
     }
 
@@ -115,24 +162,43 @@ const ReportList = ({
 
     // Simpan data sementara
     setPendingReport(reportData);
+    setSubmitError(null);
 
     // Tampilkan popup konfirmasi
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmSubmit = () => {
-    if (!pendingReport) return;
+  const handleOpenLocation = (point?: "start" | "end") => {
+    setValidationError(null);
+    onOpenLocation(point);
+  };
 
-    // Tampilkan data laporan dalam bentuk object
-    console.log("Data laporan:", pendingReport);
+  const handleConfirmSubmit = async () => {
+    if (!pendingReport || isSubmitting) return;
 
-    // Tampilkan data laporan dalam format JSON
-    console.log("Data laporan (JSON):", JSON.stringify(pendingReport, null, 2));
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
 
-    setIsConfirmOpen(false);
+      // Kirim laporan ke Supabase
+      const result = await submitReport(pendingReport);
 
-    // Tampilkan notifikasi berhasil
-    setIsSuccessOpen(true);
+      console.log("Laporan berhasil disimpan:", result);
+
+      // Tutup popup konfirmasi
+      setIsConfirmOpen(false);
+
+      // Tampilkan popup laporan diterima
+      setIsSuccessOpen(true);
+    } catch (error) {
+      console.error("Gagal mengirim laporan:", error);
+
+      setSubmitError(
+        getReportErrorMessage(error),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -158,7 +224,7 @@ const ReportList = ({
             {!(startPoint && endPoint) && (
               <button
                 type="button"
-                onClick={() => onOpenLocation()}
+                onClick={() => handleOpenLocation()}
                 className="flex min-h-12 w-full items-center gap-3 rounded-xl border bg-white px-3 text-left hover:bg-gray-50"
               >
                 <MapPin className="size-5 shrink-0 text-gray-500" />
@@ -175,7 +241,7 @@ const ReportList = ({
             {startPoint && endPoint && (
               <button
                 type="button"
-                onClick={() => onOpenLocation()}
+                onClick={() => handleOpenLocation()}
                 className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-gray-50"
               >
                 <RouteIcon className="flex shrink-0 items-center justify-center" />
@@ -184,14 +250,22 @@ const ReportList = ({
                   <div>
                     <p className="text-xs font-semibold">Titik Awal</p>
                     <p className="break-all text-[11px] text-gray-500">
-                      {formatCoordinate(startPoint)}
+                      {isResolvingStart
+                        ? "Mencari nama jalan..."
+                        : startStreetLookupFailed
+                          ? "Nama jalan gagal diperiksa"
+                          : startStreetName ?? "Nama jalan tidak ditemukan"}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-xs font-semibold">Titik Akhir</p>
                     <p className="break-all text-[11px] text-gray-500">
-                      {formatCoordinate(endPoint)}
+                      {isResolvingEnd
+                        ? "Mencari nama jalan..."
+                        : endStreetLookupFailed
+                          ? "Nama jalan gagal diperiksa"
+                          : endStreetName ?? "Nama jalan tidak ditemukan"}
                     </p>
                   </div>
                 </div>
@@ -367,6 +441,11 @@ const ReportList = ({
 
         {/* TOMBOL KIRIM */}
         <div className="shrink-0 border-t bg-white p-4">
+          {validationError && (
+            <p className="mb-3 text-xs text-red-600" role="alert">
+              {validationError}
+            </p>
+          )}
           <Button type="submit" className="h-11 w-full rounded-xl">
             <Send className="mr-2 size-4" />
             Kirim Laporan
@@ -386,6 +465,11 @@ const ReportList = ({
               Pastikan seluruh informasi laporan yang Anda masukkan sudah benar
               sebelum mengirim laporan.
             </DialogDescription>
+            {submitError && (
+              <p className="text-xs text-red-600" role="alert">
+                {submitError}
+              </p>
+            )}
           </DialogHeader>
 
           <DialogFooter className="flex flex-row justify-end gap-2">
@@ -396,10 +480,13 @@ const ReportList = ({
             >
               Tidak
             </Button>
-
-            <Button type="button" onClick={handleConfirmSubmit}>
-              Iya
-            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Mengirim..." : "Iya"}
+            </Button>{" "}
           </DialogFooter>
         </DialogContent>
       </Dialog>
