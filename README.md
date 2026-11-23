@@ -56,70 +56,37 @@
 
 ```
 
-Fungsi yang perlu dipanggil dari terminal adalah **Edge Function** `resolve-street`, bukan RPC database secara langsung. Edge Function mencari ruas jalan di Overpass, lalu memanggil RPC `upsert_osm_street` untuk menyimpannya. RPC tersebut hanya mengizinkan `service_role`, jadi Edge Function perlu secret key backend. Alurnya ada di `index.ts` dan RPC-nya dibuat oleh `migrasi upsert`.
-
-### 1. Jalankan Supabase lokal
-
-Di direktori proyek:
-
-```bash
-supabase start
-supabase status
-```
-
-Pastikan migrasi sudah diterapkan. Jika database lokal belum disiapkan, bisa jalankan:
-
-```bash
-supabase db reset
-```
-
-**Perhatian:** perintah itu mereset database lokal dan menjalankan ulang migrasi; data lokal yang ada akan terhapus.
-
-### 2. Siapkan secret key untuk Edge Function
-
-Dari hasil `supabase status`, ambil **service role key lokal**—bukan anon key. Buat file `.env.local` di root proyek:
-
-```env
-SUPABASE_URL=http://127.0.0.1:54321
-SUPABASE_SECRET_KEY=ISI_DENGAN_SERVICE_ROLE_KEY_LOKAL
-```
-
-Jangan commit file ini atau membagikan key-nya. Kode fungsi membaca `SUPABASE_SECRET_KEY` sebagai fallback jika `SUPABASE_SECRET_KEYS` tidak tersedia.
-
-### 3. Jalankan Edge Function
-
-```bash
-supabase functions serve resolve-street \
-  --no-verify-jwt \
-  --env-file .env.local
-```
-
-Biarkan proses ini berjalan di terminal tersebut. `--no-verify-jwt` digunakan di sini untuk pemanggilan lokal tanpa token login.
-
-### 4. Kirim koordinat untuk dicari
-
-Buka terminal kedua, lalu kirim request POST. Contoh koordinat di sekitar Sanur:
-
-```bash
-curl -i -X POST 'http://127.0.0.1:54321/functions/v1/resolve-street' \
-  -H 'Content-Type: application/json' \
-  -d '{"lat":-8.6925,"lng":115.263}'
-```
-
-Jika jalan ditemukan dalam batas pencarian, responsnya berisi `success: true` serta data ruas, termasuk UUID, OSM Way ID, nama, dan geometri. Fungsi mensyaratkan ruas berjarak **maksimal 5 meter** dari titik yang dikirim; jika tidak ada yang cocok, responsnya `404`.
-
-### 5. Periksa hasil di database lokal
-
-Jika `psql` tersedia, jalankan:
-
-```bash
-psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' \
-  -c "SELECT uuid, osm_way_id, name, ST_AsGeoJSON(coordinates) AS coordinates
-      FROM public.streets
-      ORDER BY dt_updated DESC
-      LIMIT 5;"
-```
+## How to set up the backend
 
 ```
-Memanggil fungsi lagi untuk OSM Way ID yang sama akan memperbarui ruas yang sudah ada, bukan membuat baris duplikat.
+1. Jalankan supabase start dan supabase status
+    untuk melihat Authentication Keys
+
+2. Kemudian di root, buatlah file .env.local,
+    kemudian di dalamnya diisi:
+    SUPABASE_URL=<Project URL>
+    SUPABASE_SECRET_KEY=<Authentication Keys>
+
+3. Kemudian jalankan supabase migration up terlebih
+    dahulu di folder root terminal bash/wsl pada vscode langsung, tunggu sampai prosesnya selesai.
+
+
+3. Setelah selesai proses migrationnya, pada
+    terminal bash/wsl tadi, pastikan sedang berada di folder root, exp:~/programming/bali-street-info .
+    Kemudian jalankan edge function untuk mengambil data jalan ini: supabase functions serve import-osm-streets --no-verify-jwt --env-file .env.local.
+
+4. Tunggu sampai prosesnya selesai, jika sudah
+    jalan fungsinya, maka jalankan proses pengambilan data jalan dengan menggunakan ini di terminal bash/wsl baru(terminal kedua):
+    set -a
+    source .env.local
+    set +a
+
+    curl -i -X POST \
+    'http://127.0.0.1:54321/functions/v1/import-osm-streets' \
+    -H "apikey: ${SUPABASE_SECRET_KEY}"
+
+5. Tunggu sampai prosesnya selesai(Karena ini
+    memakan waktu yang cukup lama), kemudian setelah  terdapat pemberitahuan "....success" maka prosesnya dinyatakan berhasil. tinggal di lihat hasilnya di tabel streets di supabase lokal dan bisa test di webnya langsung dengan menjalankan:
+    npm run dev -w web
+
 ```
