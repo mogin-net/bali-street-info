@@ -86,6 +86,8 @@ function DetailInfo() {
     expired: "Kedaluwarsa",
   }[report.status];
 
+  const isRoadOpen = report.status === "open";
+
   const roadData = {
     name: report.streetName,
     location: "Sanur, Denpasar Selatan, Bali",
@@ -96,12 +98,16 @@ function DetailInfo() {
       timeStyle: "short",
       timeZone: "Asia/Makassar",
     }).format(new Date(report.dtCreated)),
-    motorcycleAccess: report.isMotorcycleForbidden
-      ? "Tidak dapat dilewati"
-      : "Dapat dilewati",
-    carAccess: report.isCarForbidden
-      ? "Tidak dapat dilewati"
-      : "Dapat dilewati",
+    motorcycleAccess: isRoadOpen
+      ? "Dapat dilewati"
+      : report.isMotorcycleForbidden
+        ? "Tidak dapat dilewati"
+        : "Dapat dilewati",
+    carAccess: isRoadOpen
+      ? "Dapat dilewati"
+      : report.isCarForbidden
+        ? "Tidak dapat dilewati"
+        : "Dapat dilewati",
   };
 
   const submitConfirmation = async (isStillClosed: boolean) => {
