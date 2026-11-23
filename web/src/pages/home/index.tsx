@@ -49,6 +49,21 @@ import "./style.css";
 
 const BALI_CENTER: [number, number] = [-8.409518, 115.188919];
 const SANUR_BOUNDS = new LatLngBounds([-8.721, 115.238], [-8.668, 115.283]);
+const MAX_SEGMENT_GAP_METERS = 8;
+
+function distanceMeters(a: [number, number], b: [number, number]): number {
+  const radians = (degrees: number) => (degrees * Math.PI) / 180;
+  const latitudeDelta = radians(b[0] - a[0]);
+  const longitudeDelta = radians(b[1] - a[1]);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(radians(a[0])) *
+      Math.cos(radians(b[0])) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  return (
+    6_371_000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+  );
+}
 
 const categories = [
   { name: "Semua", icon: List },
@@ -247,48 +262,97 @@ function Home() {
 
       layerGroup.clearLayers();
 
-      roadSegments.forEach((report) => {
-        if (report.roadPath.length < 2) return;
+      const reportsById = new Map<string, HomeRoadSegment[]>();
+      roadSegments.forEach((segment) => {
+        const segments = reportsById.get(segment.reportId) ?? [];
+        segments.push(segment);
+        reportsById.set(segment.reportId, segments);
+      });
+
+      reportsById.forEach((segments) => {
+        const report = segments[0];
+        const validSegments = segments.filter(
+          (segment) => segment.roadPath.length >= 2,
+        );
+        if (validSegments.length === 0) return;
 
         const isClosed = report.status === "closed";
         const isSelected = currentSelectedId === report.reportId;
         const statusColor = isClosed ? "#DC2626" : "#16A34A";
 
         // Bikin garis rute di peta
-        const polyline = new Polyline(report.roadPath, {
+        const lineOptions = {
           color: statusColor,
           weight: isSelected ? 8 : 6,
           opacity: isSelected ? 1 : 0.85,
           lineCap: "round",
           lineJoin: "round",
-        });
+        } as const;
 
-        polyline.bindTooltip(
-          `<div>
+        const tooltip = `<div>
             <strong>${escapeHtml(report.streetName ?? "Jalan tanpa nama")}</strong>
             <br/>
             <span style="color:${statusColor};font-weight:600">
               ${isClosed ? "Jalan ditutup" : "Jalan sudah dibuka"}
             </span>
-          </div>`,
-          { sticky: true },
-        );
+          </div>`;
 
-        polyline.addTo(layerGroup);
+        const connectableJoins: [number, number][] = [];
+        for (
+          let firstIndex = 0;
+          firstIndex < validSegments.length;
+          firstIndex += 1
+        ) {
+          for (
+            let secondIndex = firstIndex + 1;
+            secondIndex < validSegments.length;
+            secondIndex += 1
+          ) {
+            const firstPath = validSegments[firstIndex].roadPath;
+            const secondPath = validSegments[secondIndex].roadPath;
+            const pairs = [
+              [firstPath[0], secondPath[0]],
+              [firstPath[0], secondPath[secondPath.length - 1]],
+              [firstPath[firstPath.length - 1], secondPath[0]],
+              [
+                firstPath[firstPath.length - 1],
+                secondPath[secondPath.length - 1],
+              ],
+            ] as const;
+            const closest = pairs.reduce((best, pair) =>
+              distanceMeters(pair[0], pair[1]) <
+              distanceMeters(best[0], best[1])
+                ? pair
+                : best,
+            );
+            if (
+              distanceMeters(closest[0], closest[1]) <= MAX_SEGMENT_GAP_METERS
+            ) {
+              connectableJoins.push([
+                (closest[0][0] + closest[1][0]) / 2,
+                (closest[0][1] + closest[1][1]) / 2,
+              ]);
+              new Polyline([closest[0], closest[1]], lineOptions).addTo(
+                layerGroup,
+              );
+            }
+          }
+        }
 
-        const markerPosition = report.markerPosition;
-
-        polyline.on("click", (event) => {
-          event.originalEvent?.stopPropagation();
-
-          setSelectedReportId((prev) =>
-            prev === report.reportId ? null : report.reportId,
-          );
-
-          mapRef.current?.panTo(markerPosition, {
-            animate: true,
+        validSegments.forEach((segment) => {
+          const polyline = new Polyline(segment.roadPath, lineOptions);
+          polyline.bindTooltip(tooltip, { sticky: true });
+          polyline.on("click", (event) => {
+            event.originalEvent?.stopPropagation();
+            setSelectedReportId((prev) =>
+              prev === report.reportId ? null : report.reportId,
+            );
+            mapRef.current?.panTo(markerPosition, { animate: true });
           });
+          polyline.addTo(layerGroup);
         });
+
+        const markerPosition = connectableJoins[0] ?? report.markerPosition;
 
         const size = isSelected ? 34 : 26;
         const anchor = size / 2;
