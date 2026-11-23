@@ -566,8 +566,10 @@ $$;
 REVOKE ALL ON FUNCTION public.submit_street_report(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, BOOLEAN, BOOLEAN, TEXT, TIMESTAMPTZ, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.submit_street_report(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, BOOLEAN, BOOLEAN, TEXT, TIMESTAMPTZ, TEXT) TO anon, authenticated;
 
-DROP FUNCTION public.get_home_road_segments();
-CREATE FUNCTION public.get_home_road_segments()
+DROP FUNCTION IF EXISTS public.get_home_road_segments();
+DROP FUNCTION IF EXISTS public.get_home_road_segments(TEXT);
+
+CREATE FUNCTION public.get_home_road_segments(p_category TEXT DEFAULT NULL)
 RETURNS TABLE (
     street_id UUID,
     street_name VARCHAR(150),
@@ -596,6 +598,10 @@ AS $$
         JOIN public.streets AS s ON s.uuid = rs.street_uuid
         JOIN public.reports AS r ON r.uuid = rs.report_uuid
         WHERE r.status IN ('closed', 'open')
+          AND (
+              p_category IS NULL
+              OR r.category = p_category
+          )
     ), marked AS (
         SELECT active.*,
                row_number() OVER (PARTITION BY report_id ORDER BY segment_order, uuid) AS first_segment,
@@ -613,8 +619,8 @@ AS $$
     FROM marked;
 $$;
 
-REVOKE ALL ON FUNCTION public.get_home_road_segments() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_home_road_segments() TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.get_home_road_segments(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_home_road_segments(TEXT) TO anon, authenticated;
 
 -- Keep the name RPC contract while ensuring its result observes the same
 -- snapping distance limit as manual and GPS report locations.

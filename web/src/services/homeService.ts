@@ -1,4 +1,3 @@
-
 import { supabase } from "../lib/supabase";
 
 type LatLng = [number, number];
@@ -40,11 +39,15 @@ export interface HomeRoadSegment {
   tooltipText: string;
 }
 
-export async function getHomeRoadSegments():
-  Promise<HomeRoadSegment[]> {
-
+export async function getHomeRoadSegments(
+  category: string = "Semua",
+): Promise<HomeRoadSegment[]> {
   const { data, error } = await supabase.rpc(
-    "get_home_road_segments"
+    "get_home_road_segments",
+    {
+      // Form laporan menyimpan kategori huruf kecil ("perbaikan"), label UI kapital.
+      p_category: category === "Semua" ? null : category.toLowerCase(),
+    }
   );
 
   if (error) {
