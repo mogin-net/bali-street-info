@@ -26,3 +26,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Exclude AdSense banner component
+src/components/adsbanner/
