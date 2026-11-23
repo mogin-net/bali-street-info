@@ -127,7 +127,7 @@ function Home() {
         setIsLoadingReports(true);
         setReportsError(null);
 
-        const segments = await getHomeRoadSegments();
+        const segments = await getHomeRoadSegments(activeCategory);
 
         if (active) {
           setRoadSegments(segments);
@@ -150,7 +150,7 @@ function Home() {
     return () => {
       active = false;
     };
-  }, [location.pathname]);
+  }, [activeCategory, location.pathname]);
 
   // Siapin peta Leaflet dan aktifin GPS pas awal load
   useEffect(() => {
@@ -245,20 +245,34 @@ function Home() {
 
   // Gambar garis rute jalan dan ikon status di peta berdasarkan data yang ada
   const renderReports = useCallback(
-    (categoryToFilter: Category, currentSelectedId: string | null) => {
+    (currentSelectedId: string | null) => {
       const layerGroup = reportsLayerRef.current;
       if (!layerGroup) return;
 
       layerGroup.clearLayers();
 
-      const displayedReports =
-        categoryToFilter === "Semua"
-          ? roadSegments
-          : roadSegments.filter(
-              (report) =>
-                report.category.toLowerCase() ===
-                categoryToFilter.toLowerCase(),
-            );
+      // Sudah difilter per kategori oleh RPC get_home_road_segments.
+      const displayedReports = roadSegments;
+
+      // Satu laporan bisa mencakup banyak ruas OSM; ikon status cukup satu
+      // per laporan, di segmen tengahnya.
+      const segmentsByReport = new Map<string, typeof displayedReports>();
+      displayedReports
+        .filter((report) => report.roadPath.length >= 2)
+        .forEach((report) =>
+          segmentsByReport.set(report.reportId, [
+            ...(segmentsByReport.get(report.reportId) ?? []),
+            report,
+          ]),
+        );
+      const markerSegmentIds = new Set(
+        [...segmentsByReport.values()].map((segments) => {
+          const ordered = segments.toSorted(
+            (a, b) => a.segmentOrder - b.segmentOrder,
+          );
+          return ordered[Math.floor((ordered.length - 1) / 2)].segmentId;
+        }),
+      );
 
       displayedReports.forEach((report) => {
         if (report.roadPath.length < 2) return;
@@ -302,6 +316,32 @@ function Home() {
             animate: true,
           });
         });
+
+        if (report.startMarkerPosition) {
+          new CircleMarker(report.startMarkerPosition, {
+            radius: 5,
+            color: "#FFFFFF",
+            weight: 2,
+            fillColor: "#111827",
+            fillOpacity: 1,
+          })
+            .bindTooltip("Titik awal penutupan")
+            .addTo(layerGroup);
+        }
+
+        if (report.endMarkerPosition) {
+          new CircleMarker(report.endMarkerPosition, {
+            radius: 5,
+            color: "#FFFFFF",
+            weight: 2,
+            fillColor: "#DC2626",
+            fillOpacity: 1,
+          })
+            .bindTooltip("Titik akhir penutupan")
+            .addTo(layerGroup);
+        }
+
+        if (!markerSegmentIds.has(report.segmentId)) return;
 
         const size = isSelected ? 34 : 26;
         const anchor = size / 2;
@@ -376,30 +416,6 @@ function Home() {
 
         marker.addTo(layerGroup);
 
-        if (report.startMarkerPosition) {
-          new CircleMarker(report.startMarkerPosition, {
-            radius: 5,
-            color: "#FFFFFF",
-            weight: 2,
-            fillColor: "#111827",
-            fillOpacity: 1,
-          })
-            .bindTooltip("Titik awal penutupan")
-            .addTo(layerGroup);
-        }
-
-        if (report.endMarkerPosition) {
-          new CircleMarker(report.endMarkerPosition, {
-            radius: 5,
-            color: "#FFFFFF",
-            weight: 2,
-            fillColor: "#DC2626",
-            fillOpacity: 1,
-          })
-            .bindTooltip("Titik akhir penutupan")
-            .addTo(layerGroup);
-        }
-
         if (isSelected) {
           marker.openTooltip();
         }
@@ -410,14 +426,14 @@ function Home() {
 
   // Update tampilan peta kalau kategori atau datanya berubah
   useEffect(() => {
-    renderReports(activeCategory, selectedReportId);
-  }, [activeCategory, selectedReportId, renderReports]);
+    renderReports(selectedReportId);
+  }, [selectedReportId, renderReports]);
 
   function chooseCategory(category: Category) {
     setActiveCategory(category);
   }
 
-  // Tombol buat ngecek dan geser peta ke lokasi HP kamu sekarang
+  // Tombol buat ngecek and geser peta ke lokasi HP kamu sekarang
   function goToMyLocation() {
     const map = mapRef.current;
 
