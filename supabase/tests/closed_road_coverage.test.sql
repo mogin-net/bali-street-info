@@ -143,13 +143,17 @@ INSERT INTO public.report_street_segments (
     report_uuid,
     street_uuid,
     start_fraction,
-    end_fraction
+    end_fraction,
+    segment_order
 )
 SELECT
     test_report.report_uuid,
     test_road.street_uuid,
     test_interval.start_fraction,
-    test_interval.end_fraction
+    test_interval.end_fraction,
+    row_number() OVER (
+        PARTITION BY test_report.report_uuid ORDER BY test_interval.road_case
+    )
 FROM coverage_test_intervals AS test_interval
 JOIN coverage_test_reports AS test_report
     ON test_report.report_case = test_interval.report_case
