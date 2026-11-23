@@ -94,7 +94,7 @@ INSERT INTO public.reports (
 )
 SELECT
     test_report.report_uuid,
-    'Tes union interval',
+    'lainnya',
     test_report.dt_created,
     test_report.last_confirmed_at,
     test_report.valid_from,

@@ -45,7 +45,8 @@ export async function getHomeRoadSegments(
   const { data, error } = await supabase.rpc(
     "get_home_road_segments",
     {
-      p_category: category === "Semua" ? null : category,
+      // Form laporan menyimpan kategori huruf kecil ("perbaikan"), label UI kapital.
+      p_category: category === "Semua" ? null : category.toLowerCase(),
     }
   );
 

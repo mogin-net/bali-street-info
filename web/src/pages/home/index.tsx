@@ -245,20 +245,14 @@ function Home() {
 
   // Gambar garis rute jalan dan ikon status di peta berdasarkan data yang ada
   const renderReports = useCallback(
-    (categoryToFilter: Category, currentSelectedId: string | null) => {
+    (currentSelectedId: string | null) => {
       const layerGroup = reportsLayerRef.current;
       if (!layerGroup) return;
 
       layerGroup.clearLayers();
 
-      const displayedReports =
-        categoryToFilter === "Semua"
-          ? roadSegments
-          : roadSegments.filter(
-              (report) =>
-                report.category.toLowerCase() ===
-                categoryToFilter.toLowerCase(),
-            );
+      // Sudah difilter per kategori oleh RPC get_home_road_segments.
+      const displayedReports = roadSegments;
 
       // Satu laporan bisa mencakup banyak ruas OSM; ikon status cukup satu
       // per laporan, di segmen tengahnya.
@@ -432,8 +426,8 @@ function Home() {
 
   // Update tampilan peta kalau kategori atau datanya berubah
   useEffect(() => {
-    renderReports(activeCategory, selectedReportId);
-  }, [activeCategory, selectedReportId, renderReports]);
+    renderReports(selectedReportId);
+  }, [selectedReportId, renderReports]);
 
   function chooseCategory(category: Category) {
     setActiveCategory(category);
