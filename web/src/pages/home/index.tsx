@@ -121,10 +121,15 @@ function Home() {
   // Ambil data jalan dari database pas halaman pertama kali dibuka
   useEffect(() => {
     let active = true;
+    let hasLoadedOnce = false;
+    let requestInFlight = false;
 
     async function loadRoadSegments() {
+      if (requestInFlight) return;
+      requestInFlight = true;
+
       try {
-        setIsLoadingReports(true);
+        if (!hasLoadedOnce) setIsLoadingReports(true);
         setReportsError(null);
 
         const segments = await getHomeRoadSegments();
@@ -139,16 +144,28 @@ function Home() {
           setReportsError("Gagal memuat data penutupan jalan.");
         }
       } finally {
+        hasLoadedOnce = true;
+        requestInFlight = false;
         if (active) {
           setIsLoadingReports(false);
         }
       }
     }
 
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadRoadSegments();
+      }
+    };
+
     void loadRoadSegments();
+    const refreshTimer = window.setInterval(refreshWhenVisible, 60_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       active = false;
+      window.clearInterval(refreshTimer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [location.pathname]);
 
