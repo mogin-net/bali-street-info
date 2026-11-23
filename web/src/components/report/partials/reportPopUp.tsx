@@ -15,11 +15,17 @@ import {
 
 import { Button } from "../../ui/button";
 import type { LocationPoint } from "../reportList";
-import { isInsideSanur, SANUR_BOUNDS } from "../sanurBonds";
+// import { isInsideSanur } from "../sanurBonds";
 
 interface ReportPopUpProps {
   startPoint: LocationPoint | null;
   endPoint: LocationPoint | null;
+  startStreetName: string | null;
+  endStreetName: string | null;
+  isResolvingStart: boolean;
+  isResolvingEnd: boolean;
+  startStreetLookupFailed: boolean;
+  endStreetLookupFailed: boolean;
   activePoint: "start" | "end";
   onChangeActive: (point: "start" | "end") => void;
   onChangeStart: (point: LocationPoint | null) => void;
@@ -73,10 +79,8 @@ const MapClickHandler = ({
   onChangeStart,
   onChangeEnd,
   onSelectPoint,
-  onRejectPoint,
 }: Pick<ReportPopUpProps, "activePoint" | "onChangeStart" | "onChangeEnd"> & {
   onSelectPoint: () => void;
-  onRejectPoint: () => void;
 }) => {
   useMapEvents({
     click: (event: LeafletMouseEvent) => {
@@ -85,16 +89,7 @@ const MapClickHandler = ({
         lng: event.latlng.lng,
       };
 
-      if (!isInsideSanur(point)) {
-        if (activePoint === "start") {
-          onChangeStart(null);
-        } else {
-          onChangeEnd(null);
-        }
-
-        onRejectPoint();
-        return;
-      }
+      // Batasan Sanur dinonaktifkan: if (!isInsideSanur(point)) return;
 
       if (activePoint === "start") {
         onChangeStart(point);
@@ -153,6 +148,12 @@ const MapViewportHandler = ({ point }: { point: LocationPoint | null }) => {
 const ReportPopUp = ({
   startPoint,
   endPoint,
+  startStreetName,
+  endStreetName,
+  isResolvingStart,
+  isResolvingEnd,
+  startStreetLookupFailed,
+  endStreetLookupFailed,
   activePoint,
   onChangeActive,
   onChangeStart,
@@ -162,7 +163,6 @@ const ReportPopUp = ({
   onClose,
 }: ReportPopUpProps) => {
   const [isInitialView, setIsInitialView] = useState(true);
-  const [locationWarning, setLocationWarning] = useState("");
   const initialLocationRequested = useRef(false);
 
   useEffect(() => {
@@ -183,13 +183,7 @@ const ReportPopUp = ({
           lng: position.coords.longitude,
         };
 
-        if (!isInsideSanur(point)) {
-          onChangeStart(null);
-          setLocationWarning(
-            "Lokasi di luar batas Sanur ditolak. Silakan pilih ulang lokasi di dalam batas Sanur.",
-          );
-          return;
-        }
+        // Batasan Sanur dinonaktifkan: if (!isInsideSanur(point)) return;
 
         onChangeStart(point);
       },
@@ -212,15 +206,7 @@ const ReportPopUp = ({
           lng: position.coords.longitude,
         };
 
-        if (!isInsideSanur(point)) {
-          onChangeStart(null);
-          setLocationWarning(
-            "Lokasi di luar batas Sanur ditolak. Silakan pilih ulang lokasi di dalam batas Sanur.",
-          );
-          return;
-        }
-
-        setLocationWarning("");
+        // Batasan Sanur dinonaktifkan: if (!isInsideSanur(point)) return;
         onChangeStart(point);
         onChangeActive("start");
       },
@@ -266,9 +252,6 @@ const ReportPopUp = ({
           <MapContainer
             center={sanurCenter}
             zoom={15}
-            minZoom={14}
-            maxBounds={SANUR_BOUNDS}
-            maxBoundsViscosity={1}
             className="h-full w-full"
             zoomControl
             scrollWheelZoom
@@ -288,16 +271,10 @@ const ReportPopUp = ({
               onChangeEnd={onChangeEnd}
               onSelectPoint={() => {
                 setIsInitialView(false);
-                setLocationWarning("");
               }}
-              onRejectPoint={() =>
-                setLocationWarning(
-                  "Lokasi di luar batas Sanur ditolak. Silakan pilih ulang lokasi di dalam batas Sanur.",
-                )
-              }
             />
 
-            {startPoint && isInsideSanur(startPoint) && (
+            {startPoint && (
               <Marker
                 position={[startPoint.lat, startPoint.lng]}
                 icon={startPinIcon}
@@ -305,7 +282,7 @@ const ReportPopUp = ({
               />
             )}
 
-            {endPoint && isInsideSanur(endPoint) && (
+            {endPoint && (
               <Marker
                 position={[endPoint.lat, endPoint.lng]}
                 icon={endPinIcon}
@@ -325,15 +302,6 @@ const ReportPopUp = ({
           >
             <LocateFixed className="size-5" />
           </Button>
-
-          {locationWarning && (
-            <p
-              role="alert"
-              className="absolute left-4 right-16 top-4 z-[1000] rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900 shadow"
-            >
-              {locationWarning}
-            </p>
-          )}
         </div>
 
         {/* PILIH TITIK */}
@@ -374,9 +342,30 @@ const ReportPopUp = ({
 
                 <p className="truncate text-[10px] text-gray-500">
                   {startPoint
-                    ? `${startPoint.lat.toFixed(5)}, ${startPoint.lng.toFixed(5)}`
+                    ? isResolvingStart
+                      ? "Mencari nama jalan..."
+                      : startStreetLookupFailed
+                        ? "Nama jalan gagal diperiksa"
+                        : (startStreetName ?? "Nama jalan tidak ditemukan")
                     : "Belum dipilih"}
                 </p>
+                {startPoint &&
+                  !isResolvingStart &&
+                  !startStreetLookupFailed &&
+                  !startStreetName && (
+                    <p
+                      className="mt-1 text-[10px] text-amber-700"
+                      role="status"
+                    >
+                      Nama jalan tidak ditemukan/berada di luar batas daerah.
+                      Geser titik ke ruas jalan yang benar.
+                    </p>
+                  )}
+                {startPoint && startStreetLookupFailed && (
+                  <p className="mt-1 text-[10px] text-amber-700" role="status">
+                    Nama jalan gagal didapat. Silahkan pilih ulang titik ini.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -389,9 +378,31 @@ const ReportPopUp = ({
 
                 <p className="truncate text-[10px] text-gray-500">
                   {endPoint
-                    ? `${endPoint.lat.toFixed(5)}, ${endPoint.lng.toFixed(5)}`
+                    ? isResolvingEnd
+                      ? "Mencari nama jalan..."
+                      : endStreetLookupFailed
+                        ? "Nama jalan gagal diperiksa"
+                        : (endStreetName ?? "Nama jalan tidak ditemukan")
                     : "Belum dipilih"}
                 </p>
+                {endPoint &&
+                  !isResolvingEnd &&
+                  !endStreetLookupFailed &&
+                  !endStreetName && (
+                    <p
+                      className="mt-1 text-[10px] text-amber-700"
+                      role="status"
+                    >
+                      Nama jalan tidak ditemukan/berada di luar batas daerah.
+                      Geser titik ke ruas jalan yang benar.{" "}
+                    </p>
+                  )}
+                {endPoint && endStreetLookupFailed && (
+                  <p className="mt-1 text-[10px] text-amber-700" role="status">
+                    Nama jalan gagal didapat. Silahkan pilih Nama jalan gagal
+                    diperiksa. Silahkan pilih ulang titik ini. ulang titik ini.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -414,8 +425,12 @@ const ReportPopUp = ({
               disabled={
                 !startPoint ||
                 !endPoint ||
-                !isInsideSanur(startPoint) ||
-                !isInsideSanur(endPoint)
+                isResolvingStart ||
+                isResolvingEnd ||
+                startStreetLookupFailed ||
+                endStreetLookupFailed ||
+                !startStreetName ||
+                !endStreetName
               }
               onClick={onSave}
             >

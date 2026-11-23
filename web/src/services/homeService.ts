@@ -9,6 +9,7 @@ interface HomeRoadSegmentRow {
   street_name: string | null;
   report_id: string;
   segment_id: string;
+  segment_order: number;
   status: "closed" | "open";
   category: string;
   road_geojson: {
@@ -19,6 +20,8 @@ interface HomeRoadSegmentRow {
     type: "Point";
     coordinates: [number, number];
   };
+  start_marker_geojson: { type: "Point"; coordinates: [number, number] } | null;
+  end_marker_geojson: { type: "Point"; coordinates: [number, number] } | null;
 }
 
 // Struktur data untuk halaman Home
@@ -27,10 +30,13 @@ export interface HomeRoadSegment {
   streetName: string | null;
   reportId: string;
   segmentId: string;
+  segmentOrder: number;
   status: "closed" | "open";
   category: string;
   roadPath: LatLng[];
   markerPosition: LatLng;
+  startMarkerPosition: LatLng | null;
+  endMarkerPosition: LatLng | null;
   tooltipText: string;
 }
 
@@ -53,6 +59,7 @@ export async function getHomeRoadSegments():
     streetName: item.street_name,
     reportId: item.report_id,
     segmentId: item.segment_id,
+    segmentOrder: item.segment_order,
     status: item.status,
     category: item.category,
 
@@ -66,6 +73,12 @@ export async function getHomeRoadSegments():
       item.marker_geojson.coordinates[1],
       item.marker_geojson.coordinates[0],
     ],
+    startMarkerPosition: item.start_marker_geojson
+      ? [item.start_marker_geojson.coordinates[1], item.start_marker_geojson.coordinates[0]]
+      : null,
+    endMarkerPosition: item.end_marker_geojson
+      ? [item.end_marker_geojson.coordinates[1], item.end_marker_geojson.coordinates[0]]
+      : null,
 
     tooltipText:
       `${item.street_name ?? "Jalan tanpa nama"} ${

@@ -17,7 +17,7 @@ import {
   LatLngBounds,
   type LocationEvent,
 } from "leaflet";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   MapPin,
   Info,
@@ -94,6 +94,7 @@ function escapeHtml(value: string): string {
 
 function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -149,7 +150,7 @@ function Home() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [location.pathname]);
 
   // Siapin peta Leaflet dan aktifin GPS pas awal load
   useEffect(() => {
@@ -254,7 +255,9 @@ function Home() {
         categoryToFilter === "Semua"
           ? roadSegments
           : roadSegments.filter(
-              (report) => report.category === categoryToFilter,
+              (report) =>
+                report.category.toLowerCase() ===
+                categoryToFilter.toLowerCase(),
             );
 
       displayedReports.forEach((report) => {
@@ -372,6 +375,30 @@ function Home() {
         });
 
         marker.addTo(layerGroup);
+
+        if (report.startMarkerPosition) {
+          new CircleMarker(report.startMarkerPosition, {
+            radius: 5,
+            color: "#FFFFFF",
+            weight: 2,
+            fillColor: "#111827",
+            fillOpacity: 1,
+          })
+            .bindTooltip("Titik awal penutupan")
+            .addTo(layerGroup);
+        }
+
+        if (report.endMarkerPosition) {
+          new CircleMarker(report.endMarkerPosition, {
+            radius: 5,
+            color: "#FFFFFF",
+            weight: 2,
+            fillColor: "#DC2626",
+            fillOpacity: 1,
+          })
+            .bindTooltip("Titik akhir penutupan")
+            .addTo(layerGroup);
+        }
 
         if (isSelected) {
           marker.openTooltip();

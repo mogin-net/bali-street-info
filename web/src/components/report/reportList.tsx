@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { getReportErrorMessage, submitReport } from "@/services/reportService";
 
 import {
   Dialog,
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 
 import MapPreview from "./mapPreview";
+import type { RoutePreview } from "@/services/reportService";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import "./style.css";
@@ -36,71 +38,210 @@ export interface LocationPoint {
 interface ReportFormProps {
   startPoint: LocationPoint | null;
   endPoint: LocationPoint | null;
+  startStreetName: string | null;
+  endStreetName: string | null;
+  isResolvingStart: boolean;
+  isResolvingEnd: boolean;
+  startStreetLookupFailed: boolean;
+  endStreetLookupFailed: boolean;
+  routePreview: RoutePreview | null;
+  isResolvingRoute: boolean;
+  routePreviewError: string | null;
   onOpenLocation: (point?: "start" | "end") => void;
 }
 
-const formatCoordinate = (point: LocationPoint) =>
-  `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`;
+interface ReportPayload {
+  startPoint: LocationPoint;
+  endPoint: LocationPoint;
+  category: string;
+  isCarForbidden: boolean;
+  isMotorcycleForbidden: boolean;
+  description: string | null;
+  networkVersion: string;
+  routeSignature: string;
+}
 
 const ReportList = ({
   startPoint,
   endPoint,
+  startStreetName,
+  endStreetName,
+  isResolvingStart,
+  isResolvingEnd,
+  startStreetLookupFailed,
+  endStreetLookupFailed,
+  routePreview,
+  isResolvingRoute,
+  routePreviewError,
   onOpenLocation,
 }: ReportFormProps) => {
   const navigate = useNavigate();
 
   // STATE POPUP
+  const [pendingReport, setPendingReport] = useState<ReportPayload | null>(
+    null,
+  );
+
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const successNavigationStarted = useRef(false);
 
-  // REDIRECT KE HOMEPAGE SETELAH NOTIFIKASI
+  // STATE PENGIRIMAN
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!isSuccessOpen) return;
 
     const timer = window.setTimeout(() => {
+      if (successNavigationStarted.current) return;
+
+      successNavigationStarted.current = true;
+      setIsSuccessOpen(false);
       navigate("/");
     }, 1500);
 
     return () => window.clearTimeout(timer);
   }, [isSuccessOpen, navigate]);
 
-  // VALIDASI FORM
+  const navigateHomeFromSuccess = () => {
+    if (!isSuccessOpen || successNavigationStarted.current) return;
+
+    successNavigationStarted.current = true;
+    setIsSuccessOpen(false);
+    navigate("/");
+  };
+
+  const handleSuccessOpenChange = (open: boolean) => {
+    if (open) {
+      successNavigationStarted.current = false;
+      setIsSuccessOpen(true);
+      return;
+    }
+
+    navigateHomeFromSuccess();
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setValidationError(null);
 
     const form = event.currentTarget;
 
     // Validasi kategori wajib
-    if (!form.reportValidity()) return;
+    if (!form.reportValidity()) {
+      setValidationError("Silakan pilih kategori laporan.");
+      return;
+    }
 
     // Validasi lokasi
     if (!startPoint || !endPoint) {
-      alert("Silakan pilih lokasi titik awal dan titik akhir.");
+      setValidationError("Silakan pilih lokasi titik awal dan titik akhir.");
       return;
     }
+
+    if (isResolvingStart || isResolvingEnd) {
+      setValidationError(
+        "Tunggu sampai nama jalan kedua titik selesai diperiksa.",
+      );
+      return;
+    }
+
+    if (startStreetLookupFailed || endStreetLookupFailed) {
+      setValidationError(
+        "Nama jalan gagal diperiksa. Silakan buka kembali peta dan pilih ulang titik yang bermasalah.",
+      );
+      return;
+    }
+
+    if (isResolvingRoute) {
+      setValidationError("Tunggu sampai jalur jalan selesai diperiksa.");
+      return;
+    }
+
+    if (!routePreview || routePreviewError) {
+      setValidationError(
+        routePreviewError ?? "Jalur jalan belum berhasil diperiksa. Silakan pilih ulang titik.",
+      );
+      return;
+    }
+
+    const missingStreetPoints = [
+      !startStreetName ? "titik awal" : null,
+      !endStreetName ? "titik akhir" : null,
+    ].filter((point): point is string => point !== null);
+
+    if (missingStreetPoints.length > 0) {
+      setValidationError(
+        `Nama jalan ${missingStreetPoints.join(" dan ")} tidak ditemukan. Silakan pilih ulang titik tersebut di peta sebelum mengirim laporan.`,
+      );
+      return;
+    }
+
+    // Ambil data formulir
+    const formData = new FormData(form);
+    const vehicles = formData.getAll("vehicle").map(String);
 
     // Validasi akses kendaraan
-    const formData = new FormData(form);
-    const vehicles = formData.getAll("vehicle");
-
     if (vehicles.length === 0) {
-      alert("Silakan pilih minimal satu akses kendaraan.");
+      setValidationError("Silakan pilih minimal satu akses kendaraan.");
       return;
     }
 
-    // Semua validasi berhasil
+    // Ambil deskripsi (opsional)
+    const description = String(formData.get("description") ?? "").trim();
+
+    // Susun data laporan
+    const reportData: ReportPayload = {
+      startPoint,
+      endPoint,
+      category: String(formData.get("category")),
+      isCarForbidden: vehicles.includes("mobil"),
+      isMotorcycleForbidden: vehicles.includes("motor"),
+      description: description || null,
+      networkVersion: routePreview.network_version,
+      routeSignature: routePreview.route_signature,
+    };
+
+    // Simpan data sementara
+    setPendingReport(reportData);
+    setSubmitError(null);
+
+    // Tampilkan popup konfirmasi
     setIsConfirmOpen(true);
   };
 
-  // KONFIRMASI PENGIRIMAN
-  const handleConfirmSubmit = () => {
-    setIsConfirmOpen(false);
+  const handleOpenLocation = (point?: "start" | "end") => {
+    setValidationError(null);
+    onOpenLocation(point);
+  };
 
-    // TODO: Proses pengiriman laporan ke database
-    console.log("Laporan dikonfirmasi");
+  const handleConfirmSubmit = async () => {
+    if (!pendingReport || isSubmitting) return;
 
-    // Tampilkan notifikasi berhasil
-    setIsSuccessOpen(true);
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+
+      // Kirim laporan ke Supabase
+      const result = await submitReport(pendingReport);
+
+      console.log("Laporan berhasil disimpan:", result);
+
+      // Tutup popup konfirmasi
+      setIsConfirmOpen(false);
+
+      // Tampilkan popup laporan diterima
+      successNavigationStarted.current = false;
+      setIsSuccessOpen(true);
+    } catch (error) {
+      console.error("Gagal mengirim laporan:", error);
+
+      setSubmitError(getReportErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -113,7 +254,21 @@ const ReportList = ({
           {/* MAP PREVIEW */}
           <div className="space-y-2">
             {startPoint && endPoint && (
-              <MapPreview startPoint={startPoint} endPoint={endPoint} />
+              <MapPreview
+                startPoint={startPoint}
+                endPoint={endPoint}
+                routePreview={routePreview}
+                isResolvingRoute={isResolvingRoute}
+              />
+            )}
+            {routePreview && (
+              <p className="text-xs text-gray-500" role="status">
+                Titik menempel ke jalan: awal {routePreview.start_snap_distance_m.toFixed(1)} m,
+                akhir {routePreview.end_snap_distance_m.toFixed(1)} m. Panjang jalur sekitar {Math.round(routePreview.route_length_m)} m.
+              </p>
+            )}
+            {routePreviewError && (
+              <p className="text-xs text-red-600" role="alert">{routePreviewError}</p>
             )}
           </div>
 
@@ -126,7 +281,7 @@ const ReportList = ({
             {!(startPoint && endPoint) && (
               <button
                 type="button"
-                onClick={() => onOpenLocation()}
+                onClick={() => handleOpenLocation()}
                 className="flex min-h-12 w-full items-center gap-3 rounded-xl border bg-white px-3 text-left hover:bg-gray-50"
               >
                 <MapPin className="size-5 shrink-0 text-gray-500" />
@@ -143,7 +298,7 @@ const ReportList = ({
             {startPoint && endPoint && (
               <button
                 type="button"
-                onClick={() => onOpenLocation()}
+                onClick={() => handleOpenLocation()}
                 className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-gray-50"
               >
                 <RouteIcon className="flex shrink-0 items-center justify-center" />
@@ -152,14 +307,22 @@ const ReportList = ({
                   <div>
                     <p className="text-xs font-semibold">Titik Awal</p>
                     <p className="break-all text-[11px] text-gray-500">
-                      {formatCoordinate(startPoint)}
+                      {isResolvingStart
+                        ? "Mencari nama jalan..."
+                        : startStreetLookupFailed
+                          ? "Nama jalan gagal diperiksa"
+                          : (startStreetName ?? "Nama jalan tidak ditemukan")}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-xs font-semibold">Titik Akhir</p>
                     <p className="break-all text-[11px] text-gray-500">
-                      {formatCoordinate(endPoint)}
+                      {isResolvingEnd
+                        ? "Mencari nama jalan..."
+                        : endStreetLookupFailed
+                          ? "Nama jalan gagal diperiksa"
+                          : (endStreetName ?? "Nama jalan tidak ditemukan")}
                     </p>
                   </div>
                 </div>
@@ -335,6 +498,11 @@ const ReportList = ({
 
         {/* TOMBOL KIRIM */}
         <div className="shrink-0 border-t bg-white p-4">
+          {validationError && (
+            <p className="mb-3 text-xs text-red-600" role="alert">
+              {validationError}
+            </p>
+          )}
           <Button type="submit" className="h-11 w-full rounded-xl">
             <Send className="mr-2 size-4" />
             Kirim Laporan
@@ -343,8 +511,17 @@ const ReportList = ({
       </form>
 
       {/* POPUP KONFIRMASI */}
-      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="max-w-sm rounded-xl">
+      <Dialog
+        open={isConfirmOpen}
+        disablePointerDismissal
+        onOpenChange={(open) => {
+          if (open) setIsConfirmOpen(true);
+        }}
+      >
+        <DialogContent
+          className="max-w-sm rounded-xl p-4"
+          showCloseButton={false}
+        >
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
               Apakah anda sudah yakin?
@@ -354,6 +531,11 @@ const ReportList = ({
               Pastikan seluruh informasi laporan yang Anda masukkan sudah benar
               sebelum mengirim laporan.
             </DialogDescription>
+            {submitError && (
+              <p className="text-xs text-red-600" role="alert">
+                {submitError}
+              </p>
+            )}
           </DialogHeader>
 
           <DialogFooter className="flex flex-row justify-end gap-2">
@@ -364,27 +546,38 @@ const ReportList = ({
             >
               Tidak
             </Button>
-
-            <Button type="button" onClick={handleConfirmSubmit}>
-              Iya
-            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Mengirim..." : "Iya"}
+            </Button>{" "}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* POPUP LAPORAN DITERIMA */}
-      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
-        <DialogContent className="max-w-sm rounded-xl" showCloseButton={false}>
+      <Dialog open={isSuccessOpen} onOpenChange={handleSuccessOpenChange}>
+        <DialogContent
+          className="max-w-sm rounded-xl"
+          showCloseButton={false}
+        >
           <DialogHeader>
             <DialogTitle className="text-center text-base font-semibold">
               Laporan diterima
             </DialogTitle>
 
             <DialogDescription className="text-center text-xs leading-relaxed">
-              Terima kasih telah berkontribusi memberikan informasi penutupan
-              jalan.
+              Terima kasih telah mengisi informasi penutupan jalan.
             </DialogDescription>
           </DialogHeader>
+          <button
+            type="button"
+            aria-label="Kembali ke Homepage"
+            onClick={navigateHomeFromSuccess}
+            className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
         </DialogContent>
       </Dialog>
     </>
