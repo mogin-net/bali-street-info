@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Polyline, useMap } from "react-leaflet";
+import type { RoutePreview } from "@/services/reportService";
 
 type LocationPoint = {
   lat: number;
@@ -9,18 +10,24 @@ type LocationPoint = {
 type MapPreviewProps = {
   startPoint: LocationPoint | null;
   endPoint: LocationPoint | null;
+  routePreview?: RoutePreview | null;
+  isResolvingRoute?: boolean;
 };
 
-const PreviewMapController = ({ startPoint, endPoint }: MapPreviewProps) => {
+const PreviewMapController = ({ startPoint, endPoint, routePreview }: MapPreviewProps) => {
   const map = useMap();
 
   useEffect(() => {
     if (startPoint && endPoint) {
       // Menampilkan kedua titik sekaligus
+      const routePositions = routePreview?.segments.flatMap((segment) =>
+        segment.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]),
+      ) ?? [];
       map.fitBounds(
         [
           [startPoint.lat, startPoint.lng],
           [endPoint.lat, endPoint.lng],
+          ...routePositions,
         ],
         {
           padding: [30, 30],
@@ -34,12 +41,12 @@ const PreviewMapController = ({ startPoint, endPoint }: MapPreviewProps) => {
     }
 
     map.invalidateSize();
-  }, [map, startPoint, endPoint]);
+  }, [map, startPoint, endPoint, routePreview]);
 
   return null;
 };
 
-const MapPreview = ({ startPoint, endPoint }: MapPreviewProps) => {
+const MapPreview = ({ startPoint, endPoint, routePreview }: MapPreviewProps) => {
   if (!startPoint || !endPoint) {
     return (
       <div className="flex h-40 items-center justify-center rounded-xl border bg-gray-50 text-sm text-gray-400"></div>
@@ -64,7 +71,19 @@ const MapPreview = ({ startPoint, endPoint }: MapPreviewProps) => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <PreviewMapController startPoint={startPoint} endPoint={endPoint} />
+        <PreviewMapController
+          startPoint={startPoint}
+          endPoint={endPoint}
+          routePreview={routePreview}
+        />
+
+        {routePreview?.segments.map((segment) => (
+          <Polyline
+            key={`${segment.segment_order}-${segment.street_uuid}`}
+            positions={segment.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])}
+            pathOptions={{ color: "#DC2626", weight: 5, opacity: 0.9 }}
+          />
+        ))}
 
         {/* MARKER TITIK AWAL */}
         <CircleMarker
@@ -77,6 +96,21 @@ const MapPreview = ({ startPoint, endPoint }: MapPreviewProps) => {
             weight: 2,
           }}
         />
+
+        {routePreview && (
+          <>
+            <CircleMarker
+              center={[routePreview.snapped_start.coordinates[1], routePreview.snapped_start.coordinates[0]]}
+              radius={4}
+              pathOptions={{ color: "#111827", fillColor: "#FFFFFF", fillOpacity: 1, weight: 2 }}
+            />
+            <CircleMarker
+              center={[routePreview.snapped_end.coordinates[1], routePreview.snapped_end.coordinates[0]]}
+              radius={4}
+              pathOptions={{ color: "#991B1B", fillColor: "#FFFFFF", fillOpacity: 1, weight: 2 }}
+            />
+          </>
+        )}
 
         {/* MARKER TITIK AKHIR */}
         <CircleMarker

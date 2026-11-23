@@ -1,9 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  getReportErrorMessage,
-  submitReport,
-} from "@/services/reportService";
+import { getReportErrorMessage, submitReport } from "@/services/reportService";
 
 import {
   Dialog,
@@ -28,6 +25,7 @@ import {
 } from "lucide-react";
 
 import MapPreview from "./mapPreview";
+import type { RoutePreview } from "@/services/reportService";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import "./style.css";
@@ -46,6 +44,9 @@ interface ReportFormProps {
   isResolvingEnd: boolean;
   startStreetLookupFailed: boolean;
   endStreetLookupFailed: boolean;
+  routePreview: RoutePreview | null;
+  isResolvingRoute: boolean;
+  routePreviewError: string | null;
   onOpenLocation: (point?: "start" | "end") => void;
 }
 
@@ -56,6 +57,8 @@ interface ReportPayload {
   isCarForbidden: boolean;
   isMotorcycleForbidden: boolean;
   description: string | null;
+  networkVersion: string;
+  routeSignature: string;
 }
 
 const ReportList = ({
@@ -67,6 +70,9 @@ const ReportList = ({
   isResolvingEnd,
   startStreetLookupFailed,
   endStreetLookupFailed,
+  routePreview,
+  isResolvingRoute,
+  routePreviewError,
   onOpenLocation,
 }: ReportFormProps) => {
   const navigate = useNavigate();
@@ -78,22 +84,44 @@ const ReportList = ({
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const successNavigationStarted = useRef(false);
 
   // STATE PENGIRIMAN
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // REDIRECT KE HOMEPAGE SETELAH NOTIFIKASI
   useEffect(() => {
     if (!isSuccessOpen) return;
 
     const timer = window.setTimeout(() => {
+      if (successNavigationStarted.current) return;
+
+      successNavigationStarted.current = true;
+      setIsSuccessOpen(false);
       navigate("/");
     }, 1500);
 
     return () => window.clearTimeout(timer);
   }, [isSuccessOpen, navigate]);
+
+  const navigateHomeFromSuccess = () => {
+    if (!isSuccessOpen || successNavigationStarted.current) return;
+
+    successNavigationStarted.current = true;
+    setIsSuccessOpen(false);
+    navigate("/");
+  };
+
+  const handleSuccessOpenChange = (open: boolean) => {
+    if (open) {
+      successNavigationStarted.current = false;
+      setIsSuccessOpen(true);
+      return;
+    }
+
+    navigateHomeFromSuccess();
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -114,13 +142,27 @@ const ReportList = ({
     }
 
     if (isResolvingStart || isResolvingEnd) {
-      setValidationError("Tunggu sampai nama jalan kedua titik selesai diperiksa.");
+      setValidationError(
+        "Tunggu sampai nama jalan kedua titik selesai diperiksa.",
+      );
       return;
     }
 
     if (startStreetLookupFailed || endStreetLookupFailed) {
       setValidationError(
         "Nama jalan gagal diperiksa. Silakan buka kembali peta dan pilih ulang titik yang bermasalah.",
+      );
+      return;
+    }
+
+    if (isResolvingRoute) {
+      setValidationError("Tunggu sampai jalur jalan selesai diperiksa.");
+      return;
+    }
+
+    if (!routePreview || routePreviewError) {
+      setValidationError(
+        routePreviewError ?? "Jalur jalan belum berhasil diperiksa. Silakan pilih ulang titik.",
       );
       return;
     }
@@ -158,6 +200,8 @@ const ReportList = ({
       isCarForbidden: vehicles.includes("mobil"),
       isMotorcycleForbidden: vehicles.includes("motor"),
       description: description || null,
+      networkVersion: routePreview.network_version,
+      routeSignature: routePreview.route_signature,
     };
 
     // Simpan data sementara
@@ -189,13 +233,12 @@ const ReportList = ({
       setIsConfirmOpen(false);
 
       // Tampilkan popup laporan diterima
+      successNavigationStarted.current = false;
       setIsSuccessOpen(true);
     } catch (error) {
       console.error("Gagal mengirim laporan:", error);
 
-      setSubmitError(
-        getReportErrorMessage(error),
-      );
+      setSubmitError(getReportErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -211,7 +254,21 @@ const ReportList = ({
           {/* MAP PREVIEW */}
           <div className="space-y-2">
             {startPoint && endPoint && (
-              <MapPreview startPoint={startPoint} endPoint={endPoint} />
+              <MapPreview
+                startPoint={startPoint}
+                endPoint={endPoint}
+                routePreview={routePreview}
+                isResolvingRoute={isResolvingRoute}
+              />
+            )}
+            {routePreview && (
+              <p className="text-xs text-gray-500" role="status">
+                Titik menempel ke jalan: awal {routePreview.start_snap_distance_m.toFixed(1)} m,
+                akhir {routePreview.end_snap_distance_m.toFixed(1)} m. Panjang jalur sekitar {Math.round(routePreview.route_length_m)} m.
+              </p>
+            )}
+            {routePreviewError && (
+              <p className="text-xs text-red-600" role="alert">{routePreviewError}</p>
             )}
           </div>
 
@@ -254,7 +311,7 @@ const ReportList = ({
                         ? "Mencari nama jalan..."
                         : startStreetLookupFailed
                           ? "Nama jalan gagal diperiksa"
-                          : startStreetName ?? "Nama jalan tidak ditemukan"}
+                          : (startStreetName ?? "Nama jalan tidak ditemukan")}
                     </p>
                   </div>
 
@@ -265,7 +322,7 @@ const ReportList = ({
                         ? "Mencari nama jalan..."
                         : endStreetLookupFailed
                           ? "Nama jalan gagal diperiksa"
-                          : endStreetName ?? "Nama jalan tidak ditemukan"}
+                          : (endStreetName ?? "Nama jalan tidak ditemukan")}
                     </p>
                   </div>
                 </div>
@@ -454,8 +511,17 @@ const ReportList = ({
       </form>
 
       {/* POPUP KONFIRMASI */}
-      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="max-w-sm rounded-xl">
+      <Dialog
+        open={isConfirmOpen}
+        disablePointerDismissal
+        onOpenChange={(open) => {
+          if (open) setIsConfirmOpen(true);
+        }}
+      >
+        <DialogContent
+          className="max-w-sm rounded-xl p-4"
+          showCloseButton={false}
+        >
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
               Apakah anda sudah yakin?
@@ -492,8 +558,11 @@ const ReportList = ({
       </Dialog>
 
       {/* POPUP LAPORAN DITERIMA */}
-      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
-        <DialogContent className="max-w-sm rounded-xl" showCloseButton={false}>
+      <Dialog open={isSuccessOpen} onOpenChange={handleSuccessOpenChange}>
+        <DialogContent
+          className="max-w-sm rounded-xl"
+          showCloseButton={false}
+        >
           <DialogHeader>
             <DialogTitle className="text-center text-base font-semibold">
               Laporan diterima
@@ -503,6 +572,12 @@ const ReportList = ({
               Terima kasih telah mengisi informasi penutupan jalan.
             </DialogDescription>
           </DialogHeader>
+          <button
+            type="button"
+            aria-label="Kembali ke Homepage"
+            onClick={navigateHomeFromSuccess}
+            className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
         </DialogContent>
       </Dialog>
     </>

@@ -30,10 +30,11 @@ export default {
           way["highway"]
             (${BOUNDING_BOX});
 
-          out tags geom;
+          out body geom;
         `;
 
         // 2. Meminta data ke Overpass API
+        console.info("OSM import: meminta data ke Overpass");
         
 const response = await fetch(OVERPASS_URL, {
   method: "POST",
@@ -61,6 +62,8 @@ if (!response.ok) {
   );
 }
 
+console.info("OSM import: respons Overpass diterima", response.status);
+
 
         if (!response.ok) {
           throw new Error(
@@ -81,7 +84,9 @@ if (!response.ok) {
           .filter((way: any) =>
             way.type === "way" &&
             Array.isArray(way.geometry) &&
-            way.geometry.length >= 2
+            way.geometry.length >= 2 &&
+            Array.isArray(way.nodes) &&
+            way.nodes.length === way.geometry.length
           )
           .map((way: any) => ({
             osm_way_id: way.id,
@@ -95,6 +100,7 @@ if (!response.ok) {
                 ]
               ),
             },
+            nodes: way.nodes,
           }));
 
         // 4. Jika tidak ada jalan ditemukan
@@ -105,40 +111,26 @@ if (!response.ok) {
           });
         }
 
-        // 5. Simpan ke database secara bertahap
-        let totalImported = 0;
-        const batchSize = 100;
+        console.info("OSM import: jumlah Way valid", streets.length);
 
-        for (
-          let i = 0;
-          i < streets.length;
-          i += batchSize
-        ) {
-          const batch = streets.slice(
-            i,
-            i + batchSize
-          );
+        // Send one bulk RPC so a local import does not spend most of its
+        // Edge Function time making many sequential database round trips.
+        const { data: totalImported, error: importError } =
+          await ctx.supabaseAdmin.rpc("import_osm_streets", {
+            p_streets: streets,
+          });
 
-          const { data, error } =
-            await ctx.supabaseAdmin.rpc(
-              "import_osm_streets",
-              {
-                p_streets: batch,
-              }
-            );
-
-          if (error) {
-            throw error;
-          }
-
-          totalImported += data ?? 0;
+        if (importError) {
+          throw importError;
         }
+
+        console.info("OSM import: bulk upsert selesai", totalImported ?? 0);
 
         // 6. Kirim hasil ke pemanggil function
         return Response.json({
           message: "Import data OSM berhasil",
           totalFound: streets.length,
-          totalImported,
+          totalImported: totalImported ?? 0,
         });
 
       } catch (error) {

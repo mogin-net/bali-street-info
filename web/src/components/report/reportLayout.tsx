@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 import Head from "./head";
 import ReportList, { type LocationPoint } from "./reportList";
 import ReportPopUp from "./partials/reportPopUp";
-import { getNearestStreetName } from "@/services/reportService";
+import {
+  getNearestStreetName,
+  getReportErrorMessage,
+  resolveStreetRoute,
+  type RoutePreview,
+} from "@/services/reportService";
 
 const ReportLayout = () => {
   const [isLocationOpen, setIsLocationOpen] = useState(false);
@@ -19,20 +24,36 @@ const ReportLayout = () => {
   const [isResolvingEnd, setIsResolvingEnd] = useState(false);
   const [startStreetLookupFailed, setStartStreetLookupFailed] = useState(false);
   const [endStreetLookupFailed, setEndStreetLookupFailed] = useState(false);
+  const [routePreview, setRoutePreview] = useState<RoutePreview | null>(null);
+  const [isResolvingRoute, setIsResolvingRoute] = useState(false);
+  const [routePreviewError, setRoutePreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
 
-    if (!startPoint) {
-      setStartStreetName(null);
-      setIsResolvingStart(false);
-      setStartStreetLookupFailed(false);
-      return;
-    }
+    if (!startPoint || !endPoint) return;
 
-    setStartStreetName(null);
-    setStartStreetLookupFailed(false);
-    setIsResolvingStart(true);
+    resolveStreetRoute(startPoint, endPoint)
+      .then((route) => {
+        if (isCurrent) setRoutePreview(route);
+      })
+      .catch((error: unknown) => {
+        console.error("Gagal memeriksa jalur laporan:", error);
+        if (isCurrent) setRoutePreviewError(getReportErrorMessage(error));
+      })
+      .finally(() => {
+        if (isCurrent) setIsResolvingRoute(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [startPoint, endPoint]);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    if (!startPoint) return;
     getNearestStreetName(startPoint)
       .then((name) => {
         if (isCurrent) setStartStreetName(name);
@@ -54,21 +75,12 @@ const ReportLayout = () => {
     return () => {
       isCurrent = false;
     };
-  }, [startPoint?.lat, startPoint?.lng]);
+  }, [startPoint]);
 
   useEffect(() => {
     let isCurrent = true;
 
-    if (!endPoint) {
-      setEndStreetName(null);
-      setIsResolvingEnd(false);
-      setEndStreetLookupFailed(false);
-      return;
-    }
-
-    setEndStreetName(null);
-    setEndStreetLookupFailed(false);
-    setIsResolvingEnd(true);
+    if (!endPoint) return;
     getNearestStreetName(endPoint)
       .then((name) => {
         if (isCurrent) setEndStreetName(name);
@@ -90,7 +102,7 @@ const ReportLayout = () => {
     return () => {
       isCurrent = false;
     };
-  }, [endPoint?.lat, endPoint?.lng]);
+  }, [endPoint]);
 
   // Membuka popup dan menentukan titik yang akan diedit.
   const handleOpenLocation = (point: "start" | "end" = "end") => {
@@ -99,6 +111,9 @@ const ReportLayout = () => {
   };
 
   const handleChangeStart = (point: LocationPoint | null) => {
+    setRoutePreview(null);
+    setRoutePreviewError(null);
+    setIsResolvingRoute(Boolean(point && endPoint));
     setStartPoint(point);
     setStartStreetName(null);
     setStartStreetLookupFailed(false);
@@ -106,6 +121,9 @@ const ReportLayout = () => {
   };
 
   const handleChangeEnd = (point: LocationPoint | null) => {
+    setRoutePreview(null);
+    setRoutePreviewError(null);
+    setIsResolvingRoute(Boolean(startPoint && point));
     setEndPoint(point);
     setEndStreetName(null);
     setEndStreetLookupFailed(false);
@@ -133,12 +151,15 @@ const ReportLayout = () => {
       <ReportList
         startPoint={startPoint}
         endPoint={endPoint}
-        startStreetName={startStreetName}
-        endStreetName={endStreetName}
+        startStreetName={routePreview?.start_street_name ?? startStreetName}
+        endStreetName={routePreview?.end_street_name ?? endStreetName}
         isResolvingStart={isResolvingStart}
         isResolvingEnd={isResolvingEnd}
         startStreetLookupFailed={startStreetLookupFailed}
         endStreetLookupFailed={endStreetLookupFailed}
+        routePreview={routePreview}
+        isResolvingRoute={isResolvingRoute}
+        routePreviewError={routePreviewError}
         onOpenLocation={handleOpenLocation}
       />
 

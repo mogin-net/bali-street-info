@@ -376,6 +376,30 @@ function Home() {
 
         marker.addTo(layerGroup);
 
+        if (report.startMarkerPosition) {
+          new CircleMarker(report.startMarkerPosition, {
+            radius: 5,
+            color: "#FFFFFF",
+            weight: 2,
+            fillColor: "#111827",
+            fillOpacity: 1,
+          })
+            .bindTooltip("Titik awal penutupan")
+            .addTo(layerGroup);
+        }
+
+        if (report.endMarkerPosition) {
+          new CircleMarker(report.endMarkerPosition, {
+            radius: 5,
+            color: "#FFFFFF",
+            weight: 2,
+            fillColor: "#DC2626",
+            fillOpacity: 1,
+          })
+            .bindTooltip("Titik akhir penutupan")
+            .addTo(layerGroup);
+        }
+
         if (isSelected) {
           marker.openTooltip();
         }
