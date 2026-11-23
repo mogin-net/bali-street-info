@@ -42,6 +42,7 @@ import {
   getHomeRoadSegments,
   type HomeRoadSegment,
 } from "../../services/homeService";
+import AdBanner from "../../components/adsbanner";
 
 import "./style.css";
 
@@ -741,36 +742,46 @@ function Home() {
           </Button>
         </div>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-[1100] px-3 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between gap-2">
-            <div className="pointer-events-auto flex shrink-0 flex-col gap-1.5 rounded-xl border border-[#E5E5E5] bg-white px-2 py-2 shadow-md sm:gap-2 sm:px-3">
-              {legends.map(({ label, icon: Icon }) => (
-                <div key={label} className="flex items-center gap-1.5 sm:gap-2">
-                  <Icon size={16} className="shrink-0 text-[#191919]" />
+       <div className="pointer-events-none absolute inset-x-0 bottom-2 z-[1100] px-3 sm:px-6 lg:px-8">
+  <div className="flex flex-col gap-2">
 
-                  <span className="whitespace-nowrap text-[9px] text-[#191919] sm:text-xs">
-                    {label}
-                  </span>
-                </div>
-              ))}
-            </div>
+    {/* Legenda dan tombol laporkan */}
+    <div className="flex items-end justify-between gap-2">
+      <div className="pointer-events-auto flex shrink-0 flex-col gap-1.5 rounded-xl border border-[#E5E5E5] bg-white px-2 py-2 shadow-md sm:gap-2 sm:px-3">
+        {legends.map(({ label, icon: Icon }) => (
+          <div key={label} className="flex items-center gap-1.5 sm:gap-2">
+            <Icon size={16} className="shrink-0 text-[#191919]" />
 
-            <Button
-              type="button"
-              onClick={() => navigate("/report")}
-              aria-label="Laporkan Penutupan"
-              className="pointer-events-auto h-10 shrink-0 gap-1.5 rounded-full bg-[#191919] px-2.5 text-[10px] text-white shadow-md disabled:bg-[#191919] disabled:text-white disabled:opacity-100 sm:gap-2 sm:px-4 sm:text-xs"
-            >
-              <PenLine size={16} className="shrink-0" />
-
-              <span className="hidden min-[360px]:inline">
-                Laporkan Penutupan
-              </span>
-
-              <span className="min-[360px]:hidden">Laporkan</span>
-            </Button>
+            <span className="whitespace-nowrap text-[9px] text-[#191919] sm:text-xs">
+              {label}
+            </span>
           </div>
-        </div>
+        ))}
+      </div>
+
+      <Button
+        type="button"
+        onClick={() => navigate("/report")}
+        aria-label="Laporkan Penutupan"
+        className="pointer-events-auto h-10 shrink-0 gap-1.5 rounded-full bg-[#191919] px-2.5 text-[10px] text-white shadow-md disabled:bg-[#191919] disabled:text-white disabled:opacity-100 sm:gap-2 sm:px-4 sm:text-xs"
+      >
+        <PenLine size={16} className="shrink-0" />
+
+        <span className="hidden min-[360px]:inline">
+          Laporkan Penutupan
+        </span>
+
+        <span className="min-[360px]:hidden">Laporkan</span>
+      </Button>
+    </div>
+
+    {/* Banner iklan */}
+    <div className="pointer-events-auto w-full">
+      <AdBanner />
+    </div>
+
+  </div>
+</div>
       </section>
 
       <Outlet />

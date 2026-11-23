@@ -40,7 +40,6 @@ type ReportRow = {
   }[];
 };
 
-// Mengambil data konfirmasi dari localStorage
 function getInitialConfirmation(
   reportId: string,
 ): ConfirmationData {
@@ -62,7 +61,6 @@ function getInitialConfirmation(
   };
 }
 
-// Mengubah format tanggal dari database
 function formatDate(date: string | null): string {
   if (!date) return "-";
 
@@ -96,7 +94,6 @@ function DetailInfo() {
 
   const onClose = () => navigate("/");
 
-  // Mengambil data laporan berdasarkan UUID dari URL Home
   useEffect(() => {
     if (!reportId) return;
 
@@ -181,7 +178,6 @@ function DetailInfo() {
     };
   }, [reportId]);
 
-  // Menyimpan konfirmasi sementara di localStorage
   const saveConfirmation = (data: ConfirmationData) => {
     if (!reportId) return;
 
@@ -193,7 +189,6 @@ function DetailInfo() {
     setConfirmation(data);
   };
 
-  // Konfirmasi jalan masih ditutup
   const handleConfirmClosed = () => {
     const newData = {
       ...confirmation,
@@ -204,7 +199,6 @@ function DetailInfo() {
     setRoadStatus("Ditutup");
   };
 
-  // Konfirmasi jalan sudah dibuka
   const handleConfirmOpened = () => {
     const newData = {
       ...confirmation,
@@ -215,7 +209,6 @@ function DetailInfo() {
     setRoadStatus("Sudah Dibuka");
   };
 
-  // Jika ID laporan tidak tersedia
   if (!reportId) {
     return (
       <div className="popup-overlay" onClick={onClose}>
@@ -233,7 +226,6 @@ function DetailInfo() {
     );
   }
 
-  // Tampilan ketika data sedang dimuat
   if (isLoading) {
     return (
       <div className="popup-overlay" onClick={onClose}>
@@ -247,7 +239,6 @@ function DetailInfo() {
     );
   }
 
-  // Tampilan jika data gagal ditemukan
   if (errorMessage || !report) {
     return (
       <div className="popup-overlay" onClick={onClose}>
@@ -269,12 +260,10 @@ function DetailInfo() {
     );
   }
 
-  // Mengambil nama jalan melalui relasi tabel
   const streetName =
     report.report_street_segments?.[0]?.streets?.name ??
     "Jalan tanpa nama";
 
-  // Data yang ditampilkan pada Detail Info
   const roadData = {
     name: streetName,
     location: "Sanur, Denpasar Selatan, Bali",
