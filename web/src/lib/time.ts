@@ -18,3 +18,20 @@ const clockFormat = new Intl.DateTimeFormat("id-ID", {
 export function formatClock(iso: string): string {
   return clockFormat.format(new Date(iso));
 }
+
+// YYYY-MM-DD in Bali time, to tell whether two instants share a day.
+const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Makassar" });
+const dayFormat = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Asia/Makassar",
+});
+
+// Multi-day reports (perbaikan, bencana) need the date, not just "11.12".
+export function formatReportedAt(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const clock = clockFormat.format(date);
+  return dayKey.format(date) === dayKey.format(now)
+    ? clock
+    : `${dayFormat.format(date)}, ${clock}`;
+}

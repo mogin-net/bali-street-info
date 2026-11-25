@@ -51,6 +51,8 @@ import { findNearestReport, type LatLng } from "./proximity";
 import "./style.css";
 
 const NEARBY_RADIUS_M = 200;
+// Coarser fixes (Wi-Fi/cell, indoors) can't tell who is actually at the road.
+const MAX_GPS_ACCURACY_M = 100;
 const PERMISSION_DENIED = 1;
 
 const BALI_CENTER: [number, number] = [-8.409518, 115.188919];
@@ -191,6 +193,7 @@ function Home() {
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
+        if (position.coords.accuracy > MAX_GPS_ACCURACY_M) return;
         positionRef.current = [
           position.coords.latitude,
           position.coords.longitude,
@@ -577,8 +580,10 @@ function Home() {
 
         setLocationMessage(accuracyText);
         setWatchEnabled(true);
-        positionRef.current = [latlng.lat, latlng.lng];
-        pinNearbyReport();
+        if (position.coords.accuracy <= MAX_GPS_ACCURACY_M) {
+          positionRef.current = [latlng.lat, latlng.lng];
+          pinNearbyReport();
+        }
         setIsLocating(false);
         map.flyTo(latlng, Math.max(map.getMinZoom(), 17));
       },

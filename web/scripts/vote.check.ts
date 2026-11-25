@@ -1,6 +1,6 @@
 // Self-check for pure vote helpers. Run: node web/scripts/vote.check.ts
 import assert from "node:assert/strict";
-import { formatAgo } from "../src/lib/time.ts";
+import { formatAgo, formatReportedAt } from "../src/lib/time.ts";
 import { distanceToPathMeters, findNearestReport } from "../src/pages/home/proximity.ts";
 import { markReportAsked, readAskedIds } from "../src/lib/askedReports.ts";
 
@@ -9,6 +9,10 @@ assert.equal(formatAgo("2026-11-23T09:59:30Z", now), "baru saja");
 assert.equal(formatAgo("2026-11-23T09:35:00Z", now), "25 mnt lalu");
 assert.equal(formatAgo("2026-11-23T08:00:00Z", now), "2 jam lalu");
 assert.equal(formatAgo("2026-11-20T09:00:00Z", now), "3 hari lalu");
+// now = 18.00 WITA on 23 Nov
+assert.equal(formatReportedAt("2026-11-23T03:12:00Z", now), "11.12", "today: clock only");
+assert.equal(formatReportedAt("2026-11-20T03:12:00Z", now), "20 Nov, 11.12", "earlier day: date + clock");
+assert.equal(formatReportedAt("2026-11-22T17:00:00Z", now), "01.00", "WITA midnight decides today");
 
 const line: [number, number][] = [[-8.7, 115.25], [-8.7, 115.26]];
 assert.ok(distanceToPathMeters([-8.7, 115.255], line) < 1, "on the line");

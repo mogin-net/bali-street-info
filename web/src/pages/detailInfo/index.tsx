@@ -28,7 +28,7 @@ import {
   type ReportStatus,
 } from "@/services/detailInfoService";
 import { getReportErrorMessage } from "@/services/reportService";
-import { formatAgo, formatClock } from "@/lib/time";
+import { formatAgo, formatClock, formatReportedAt } from "@/lib/time";
 import type { HomeOutletContext } from "@/pages/home";
 
 type Loaded = {
@@ -87,9 +87,9 @@ function DetailInfo() {
   // Re-enable the buttons when the cooldown ends while the panel stays open.
   useEffect(() => {
     if (!myNextVoteAt) return;
+    // Also when the cooldown already ended during loading: `now` is from mount.
     const waitMs = new Date(myNextVoteAt).getTime() - Date.now();
-    if (waitMs <= 0) return;
-    const timer = setTimeout(() => setNow(Date.now()), waitMs + 500);
+    const timer = setTimeout(() => setNow(Date.now()), Math.max(0, waitMs) + 500);
     return () => clearTimeout(timer);
   }, [myNextVoteAt]);
 
@@ -145,8 +145,23 @@ function DetailInfo() {
           ? voteThanksMessage(report.status, result.reportStatus)
           : "Laporan telah kedaluwarsa; konfirmasi tidak disimpan.",
       );
-      // Don't let the nearby card ask again about a report just voted on here.
-      if (result.confirmationRecorded) markAsked(report.reportId);
+      if (result.confirmationRecorded) {
+        // Disable the buttons now, not only after the slower detail refetch.
+        setLoaded((current) =>
+          current?.report
+            ? {
+                ...current,
+                report: {
+                  ...current.report,
+                  status: result.reportStatus,
+                  myNextVoteAt: result.nextVoteAt,
+                },
+              }
+            : current,
+        );
+        // Don't let the nearby card ask again about a report just voted on here.
+        markAsked(report.reportId);
+      }
     } catch (error) {
       console.error("Gagal menyimpan konfirmasi:", error);
       setVoteError(getReportErrorMessage(error));
@@ -213,7 +228,8 @@ function DetailInfo() {
           <h2 id="road-detail-title">{report.streetName}</h2>
 
           <p className="road-meta">
-            {category} · dilaporkan {formatClock(report.dtCreated)}
+            {category} · dilaporkan{" "}
+            {formatReportedAt(report.dtCreated, nowDate)}
           </p>
 
           <span className="road-status" data-status={report.status}>
@@ -295,7 +311,8 @@ function DetailInfo() {
             {voteMessage}
           </p>
         )}
-        {voteError && (
+        {/* An expired report already shows its own note; don't repeat P2003. */}
+        {voteError && !isExpired && (
           <p className="vote-feedback" role="alert">
             {voteError}
           </p>
