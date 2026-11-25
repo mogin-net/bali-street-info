@@ -44,7 +44,31 @@ import {
   type HomeRoadSegment,
 } from "../../services/homeService";
 
+import { NearbyVoteCard } from "./nearbyVoteCard";
+import { findNearestReport, type LatLng } from "./proximity";
 import "./style.css";
+
+const NEARBY_RADIUS_M = 200;
+const ASKED_STORAGE_KEY = "nearby-vote-asked";
+
+// Each report is asked once per browser session; storage may be blocked.
+function readAskedIds(): Set<string> {
+  try {
+    return new Set(
+      JSON.parse(sessionStorage.getItem(ASKED_STORAGE_KEY) ?? "[]") as string[],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function writeAskedIds(ids: Set<string>) {
+  try {
+    sessionStorage.setItem(ASKED_STORAGE_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Without storage the card may ask again after a reload; nothing else breaks.
+  }
+}
 
 const BALI_CENTER: [number, number] = [-8.409518, 115.188919];
 const SANUR_BOUNDS = new LatLngBounds([-8.721, 115.238], [-8.668, 115.283]);
@@ -128,6 +152,69 @@ function Home() {
   const [reloadKey, setReloadKey] = useState(0);
   const reloadReports = useCallback(() => setReloadKey((key) => key + 1), []);
 
+  // Nearby-vote card. Refs feed the geolocation callback; once a card is
+  // pinned it stays until answered or skipped, even if GPS drifts past the
+  // radius or the segments reload.
+  const [watchEnabled, setWatchEnabled] = useState(false);
+  const [nearbyCard, setNearbyCard] = useState<{
+    report: HomeRoadSegment;
+    distanceM: number;
+  } | null>(null);
+  const positionRef = useRef<LatLng | null>(null);
+  const segmentsRef = useRef<HomeRoadSegment[]>([]);
+  const askedRef = useRef<Set<string> | null>(null);
+  const pathRef = useRef(location.pathname);
+
+  const pinNearbyReport = useCallback(() => {
+    setNearbyCard((current) => {
+      const position = positionRef.current;
+      if (current || !position || pathRef.current !== "/") return current;
+
+      askedRef.current ??= readAskedIds();
+      const found = findNearestReport(
+        position,
+        segmentsRef.current,
+        NEARBY_RADIUS_M,
+        askedRef.current,
+      );
+      return found && { report: found.segment, distanceM: found.distanceM };
+    });
+  }, []);
+
+  const finishNearbyCard = useCallback(
+    (reportId: string) => {
+      askedRef.current ??= readAskedIds();
+      askedRef.current.add(reportId);
+      writeAskedIds(askedRef.current);
+      setNearbyCard(null);
+      reloadReports();
+    },
+    [reloadReports],
+  );
+
+  useEffect(() => {
+    pathRef.current = location.pathname;
+  }, [location.pathname]);
+
+  // Watches only while this page is open; started after the first location fix.
+  useEffect(() => {
+    if (!watchEnabled || !navigator.geolocation) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        positionRef.current = [
+          position.coords.latitude,
+          position.coords.longitude,
+        ];
+        pinNearbyReport();
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000 },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [watchEnabled, pinNearbyReport]);
+
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
   const [query, setQuery] = useState("");
@@ -148,6 +235,8 @@ function Home() {
 
         if (active) {
           setRoadSegments(segments);
+          segmentsRef.current = segments;
+          pinNearbyReport();
         }
       } catch (error) {
         console.error("Gagal mengambil laporan Home:", error);
@@ -167,7 +256,7 @@ function Home() {
     return () => {
       active = false;
     };
-  }, [activeCategory, location.pathname, reloadKey]);
+  }, [activeCategory, location.pathname, reloadKey, pinNearbyReport]);
 
   // Siapin peta Leaflet dan aktifin GPS pas awal load
   useEffect(() => {
@@ -195,6 +284,7 @@ function Home() {
 
     const handleLocationFound = (event: LocationEvent) => {
       setIsLocating(false);
+      setWatchEnabled(true);
 
       if (locationMarkerRef.current) {
         locationMarkerRef.current.setLatLng(event.latlng);
@@ -495,6 +585,9 @@ function Home() {
             : "";
 
         setLocationMessage(accuracyText);
+        setWatchEnabled(true);
+        positionRef.current = [latlng.lat, latlng.lng];
+        pinNearbyReport();
         setIsLocating(false);
         map.flyTo(latlng, Math.max(map.getMinZoom(), 17));
       },
@@ -837,6 +930,15 @@ function Home() {
             </Button>
           </div>
         </div>
+
+        {nearbyCard && location.pathname === "/" && (
+          <NearbyVoteCard
+            key={nearbyCard.report.reportId}
+            report={nearbyCard.report}
+            distanceM={nearbyCard.distanceM}
+            onDone={() => finishNearbyCard(nearbyCard.report.reportId)}
+          />
+        )}
       </section>
 
       <Outlet context={{ reloadReports } satisfies HomeOutletContext} />
