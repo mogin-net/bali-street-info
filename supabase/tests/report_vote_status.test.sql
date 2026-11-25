@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(25);
+SELECT plan(42);
 
 -- R = reporter, A/B/C = voters.
 INSERT INTO auth.users (id) VALUES
@@ -105,6 +105,146 @@ SELECT lives_ok(
     $$UPDATE public.reports SET status = 'maybe_open'
       WHERE uuid = '10000000-0000-0000-0000-000000000001'$$,
     'reports.status accepts maybe_open'
+);
+
+-- ---------------------------------------------------------------------------
+-- Task 2: submit_report_confirmation
+-- ---------------------------------------------------------------------------
+
+INSERT INTO public.reports (uuid, category, user_uuid, dt_created, last_confirmed_at, status) VALUES
+    ('20000000-0000-0000-0000-000000000001', 'upacara', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '1 hour', NULL, 'closed'),
+    ('20000000-0000-0000-0000-000000000002', 'upacara', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '1 hour', NULL, 'closed'),
+    ('20000000-0000-0000-0000-000000000003', 'upacara', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '10 minutes', NULL, 'closed'),
+    ('20000000-0000-0000-0000-000000000004', 'upacara', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '2 hours', NULL, 'closed'),
+    ('20000000-0000-0000-0000-000000000005', 'upacara', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '1 hour', 'closed'),
+    ('20000000-0000-0000-0000-000000000006', 'perbaikan', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '1 hour', 'closed'),
+    ('20000000-0000-0000-0000-000000000007', 'upacara', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '13 hours', NULL, 'closed'),
+    ('20000000-0000-0000-0000-000000000008', 'perbaikan', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '13 hours', NULL, 'closed');
+
+INSERT INTO public.report_confirmations (report_uuid, user_uuid, is_still_closed, dt_created) VALUES
+    ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', TRUE, NOW() - INTERVAL '31 minutes'),
+    ('20000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000002', FALSE, NOW() - INTERVAL '4 hours'),
+    ('20000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000002', FALSE, NOW() - INTERVAL '4 hours');
+
+-- Reporter (closed) + A open → maybe_open
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000002');
+SELECT results_eq(
+    $$SELECT report_status, closed_count, open_count, confirmation_recorded, next_vote_at
+      FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000001', FALSE)$$,
+    $$VALUES ('maybe_open'::TEXT, 1::BIGINT, 1::BIGINT, TRUE, NOW() + INTERVAL '30 minutes')$$,
+    'first open vote → maybe_open'
+);
+
+-- + B open → open (2 vs 1)
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000003');
+SELECT results_eq(
+    $$SELECT report_status, closed_count, open_count
+      FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000001', FALSE)$$,
+    $$VALUES ('open'::TEXT, 1::BIGINT, 2::BIGINT)$$,
+    'second open vote → open'
+);
+SELECT is(
+    (SELECT actual_opened_at FROM public.reports WHERE uuid = '20000000-0000-0000-0000-000000000001'),
+    NOW(),
+    'actual_opened_at set when status becomes open'
+);
+
+-- + C closed → 2 vs 2 → maybe_open
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000004');
+SELECT results_eq(
+    $$SELECT report_status, closed_count, open_count
+      FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000001', TRUE)$$,
+    $$VALUES ('maybe_open'::TEXT, 2::BIGINT, 2::BIGINT)$$,
+    'tie 2-2 falls back to maybe_open'
+);
+
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000002');
+SELECT throws_ok(
+    $$SELECT * FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000001', TRUE)$$,
+    'P2004', NULL,
+    're-vote inside 30 minutes is rejected'
+);
+
+SELECT results_eq(
+    $$SELECT report_status, confirmation_recorded
+      FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000002', FALSE)$$,
+    $$VALUES ('maybe_open'::TEXT, TRUE)$$,
+    're-vote after cooldown replaces the earlier closed vote'
+);
+
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000001');
+SELECT throws_ok(
+    $$SELECT * FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000003', FALSE)$$,
+    'P2004', NULL,
+    'reporter is inside the cooldown right after reporting'
+);
+
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000002');
+SELECT * FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000004', FALSE);
+SELECT is(
+    (SELECT last_confirmed_at FROM public.reports WHERE uuid = '20000000-0000-0000-0000-000000000004'),
+    NULL,
+    'open vote does not extend report life'
+);
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000003');
+SELECT * FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000004', TRUE);
+SELECT is(
+    (SELECT last_confirmed_at FROM public.reports WHERE uuid = '20000000-0000-0000-0000-000000000004'),
+    NOW(),
+    'closed vote extends report life'
+);
+
+-- Same timestamps, different category windows.
+SELECT results_eq(
+    $$SELECT report_status
+      FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000005', FALSE)$$,
+    $$VALUES ('maybe_open'::TEXT)$$,
+    'upacara: 4h and 5h old votes are outside the 3h window'
+);
+SELECT results_eq(
+    $$SELECT report_status
+      FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000006', FALSE)$$,
+    $$VALUES ('open'::TEXT)$$,
+    'perbaikan: same votes are inside the 48h window'
+);
+
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000002');
+SELECT results_eq(
+    $$SELECT report_status, confirmation_recorded, next_vote_at
+      FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000007', FALSE)$$,
+    $$VALUES ('expired'::TEXT, FALSE, NULL::TIMESTAMPTZ)$$,
+    'upacara report expires 12h after the last closed activity'
+);
+SELECT is(
+    (SELECT status FROM public.reports WHERE uuid = '20000000-0000-0000-0000-000000000007'),
+    'expired',
+    'expiry is stored'
+);
+SELECT throws_ok(
+    $$SELECT * FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000007', FALSE)$$,
+    'P2003', NULL,
+    'expired report rejects votes'
+);
+
+SELECT results_eq(
+    $$SELECT confirmation_recorded
+      FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000008', FALSE)$$,
+    $$VALUES (TRUE)$$,
+    'perbaikan report is still active after 13h'
+);
+
+SELECT pg_temp.act_as(NULL);
+SELECT throws_ok(
+    $$SELECT * FROM public.submit_report_confirmation('20000000-0000-0000-0000-000000000008', FALSE)$$,
+    'P2001', NULL,
+    'vote without a session is rejected'
+);
+
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000003');
+SELECT throws_ok(
+    $$SELECT * FROM public.submit_report_confirmation(gen_random_uuid(), FALSE)$$,
+    'P2002', NULL,
+    'unknown report is rejected'
 );
 
 SELECT * FROM finish();
