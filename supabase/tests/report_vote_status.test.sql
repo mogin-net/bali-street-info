@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(42);
+SELECT plan(48);
 
 -- R = reporter, A/B/C = voters.
 INSERT INTO auth.users (id) VALUES
@@ -245,6 +245,71 @@ SELECT throws_ok(
     $$SELECT * FROM public.submit_report_confirmation(gen_random_uuid(), FALSE)$$,
     'P2002', NULL,
     'unknown report is rejected'
+);
+
+-- ---------------------------------------------------------------------------
+-- Task 3: read paths
+-- ---------------------------------------------------------------------------
+
+INSERT INTO public.streets (uuid, osm_way_id, name, coordinates) VALUES
+    ('31000000-0000-0000-0000-000000000001', 990000000001, 'Jl. Uji Vote',
+     ST_GeomFromText('LINESTRING(115.25 -8.70, 115.26 -8.70)', 4326));
+
+INSERT INTO public.reports (uuid, category, user_uuid, dt_created, status) VALUES
+    ('30000000-0000-0000-0000-000000000001', 'upacara', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '2 hours', 'maybe_open'),
+    ('30000000-0000-0000-0000-000000000002', 'event', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '30 minutes', 'maybe_open'),
+    ('30000000-0000-0000-0000-000000000003', 'event', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '30 minutes', 'expired'),
+    ('30000000-0000-0000-0000-000000000004', 'upacara', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '13 hours', 'maybe_open'),
+    ('30000000-0000-0000-0000-000000000005', 'perbaikan', '00000000-0000-0000-0000-000000000001', NOW() - INTERVAL '3 days', 'closed');
+
+INSERT INTO public.report_confirmations (report_uuid, user_uuid, is_still_closed, dt_created) VALUES
+    ('30000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', FALSE, NOW() - INTERVAL '10 minutes');
+
+INSERT INTO public.report_street_segments (report_uuid, street_uuid, start_fraction, end_fraction, segment_order) VALUES
+    ('30000000-0000-0000-0000-000000000002', '31000000-0000-0000-0000-000000000001', 0.0, 0.5, 1),
+    ('30000000-0000-0000-0000-000000000003', '31000000-0000-0000-0000-000000000001', 0.5, 1.0, 1);
+
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000002');
+SELECT results_eq(
+    $$SELECT closed_count, open_count, closed_is_reporter_only,
+             last_open_vote_at, last_closed_vote_at, my_next_vote_at
+      FROM public.get_report_detail('30000000-0000-0000-0000-000000000001')$$,
+    $$VALUES (1::BIGINT, 1::BIGINT, TRUE,
+              NOW() - INTERVAL '10 minutes', NOW() - INTERVAL '2 hours', NOW() + INTERVAL '20 minutes')$$,
+    'detail shows fresh votes per side, reporter-only closed side, and my cooldown'
+);
+
+SELECT pg_temp.act_as('00000000-0000-0000-0000-000000000003');
+SELECT is(
+    (SELECT my_next_vote_at FROM public.get_report_detail('30000000-0000-0000-0000-000000000001')),
+    NULL,
+    'my_next_vote_at is NULL for someone who never voted'
+);
+
+SELECT results_eq(
+    $$SELECT status::TEXT, report_created_at
+      FROM public.get_home_road_segments(NULL)
+      WHERE report_id = '30000000-0000-0000-0000-000000000002'$$,
+    $$VALUES ('maybe_open'::TEXT, NOW() - INTERVAL '30 minutes')$$,
+    'home map returns maybe_open reports with their creation time'
+);
+
+SELECT is_empty(
+    $$SELECT 1 FROM public.get_home_road_segments(NULL)
+      WHERE report_id = '30000000-0000-0000-0000-000000000003'$$,
+    'home map hides expired reports'
+);
+
+SELECT public.expire_stale_reports();
+SELECT is(
+    (SELECT status FROM public.reports WHERE uuid = '30000000-0000-0000-0000-000000000004'),
+    'expired',
+    'expiry job expires maybe_open upacara reports after 12h'
+);
+SELECT is(
+    (SELECT status FROM public.reports WHERE uuid = '30000000-0000-0000-0000-000000000005'),
+    'closed',
+    'expiry job keeps perbaikan reports for 7 days'
 );
 
 SELECT * FROM finish();

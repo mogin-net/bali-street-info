@@ -50,7 +50,8 @@ CREATE TEMP TABLE coverage_test_reports (
     dt_created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_confirmed_at TIMESTAMPTZ,
     valid_from TIMESTAMPTZ,
-    valid_until TIMESTAMPTZ
+    valid_until TIMESTAMPTZ,
+    category TEXT NOT NULL DEFAULT 'lainnya'
 ) ON COMMIT DROP;
 
 INSERT INTO coverage_test_reports (
@@ -73,6 +74,7 @@ VALUES
     ('status_closed', 'closed', NOW(), NULL, NULL),
     ('status_open', 'open', NOW(), NULL, NULL),
     ('status_expired', 'expired', NOW(), NULL, NULL),
+    ('status_maybe_open', 'maybe_open', NOW(), NULL, NULL),
     ('time_active', 'closed', NOW(), NULL, NULL),
     ('time_future_start', 'closed', NOW(), NOW() + INTERVAL '1 day', NULL),
     ('time_past_end', 'closed', NOW(), NULL, NOW() - INTERVAL '1 second'),
@@ -82,6 +84,10 @@ VALUES
     ('invalid_geometry_report', 'closed', NOW(), NULL, NULL),
     ('empty_geometry_report', 'closed', NOW(), NULL, NULL),
     ('zero_length_report', 'closed', NOW(), NULL, NULL);
+
+-- Upacara reports expire after 12h, well before the 48h of "lainnya".
+INSERT INTO coverage_test_reports (report_case, report_status, dt_created, category)
+VALUES ('time_upacara_stale', 'closed', NOW() - INTERVAL '13 hours', 'upacara');
 
 INSERT INTO public.reports (
     uuid,
@@ -94,7 +100,7 @@ INSERT INTO public.reports (
 )
 SELECT
     test_report.report_uuid,
-    'lainnya',
+    test_report.category,
     test_report.dt_created,
     test_report.last_confirmed_at,
     test_report.valid_from,
@@ -128,10 +134,12 @@ VALUES
     ('status_closed', 'status_filter', 0.0, 0.5),
     ('status_open', 'status_filter', 0.3, 0.8),
     ('status_expired', 'status_filter', 0.8, 1.0),
+    ('status_maybe_open', 'status_filter', 0.5, 0.7),
     ('time_active', 'temporal_filter', 0.0, 0.25),
     ('time_future_start', 'temporal_filter', 0.25, 0.5),
     ('time_past_end', 'temporal_filter', 0.5, 0.75),
     ('time_stale', 'temporal_filter', 0.75, 1.0),
+    ('time_upacara_stale', 'temporal_filter', 0.75, 1.0),
     ('multi_way_report', 'multi_way_a', 0.1, 0.4),
     ('multi_way_report', 'multi_way_b', 0.4, 0.8),
     ('no_votes_report', 'no_votes', 0.0, 0.2),
@@ -315,8 +323,8 @@ SELECT is(
             ON test_road.street_uuid = coverage.street_uuid
         WHERE test_road.scenario = 'status_filter'
     ),
-    0.5::DOUBLE PRECISION,
-    'only closed reports contribute; open and expired reports are excluded'
+    0.7::DOUBLE PRECISION,
+    'closed and maybe_open reports contribute; open and expired are excluded'
 );
 
 SELECT is(
@@ -327,7 +335,7 @@ SELECT is(
             ON test_road.street_uuid = coverage.street_uuid
         WHERE test_road.scenario = 'status_filter'
     ),
-    1::BIGINT,
+    2::BIGINT,
     'report count applies the same status filter'
 );
 
@@ -340,7 +348,7 @@ SELECT is(
         WHERE test_road.scenario = 'temporal_filter'
     ),
     0.25::DOUBLE PRECISION,
-    'future, ended, and 72-hour-stale reports are excluded'
+    'future, ended, and category-stale reports are excluded'
 );
 
 SELECT is(
