@@ -30,6 +30,7 @@ import {
   CircleEllipsis,
   CircleX,
   CircleCheck,
+  CircleQuestionMark,
   PenLine,
   Crosshair,
   Check,
@@ -59,8 +60,19 @@ const categories = [
 
 const legends = [
   { label: "Jalan ditutup", icon: CircleX },
+  { label: "Mungkin sudah dibuka", icon: CircleQuestionMark },
   { label: "Jalan sudah dibuka", icon: CircleCheck },
 ] as const;
+
+// Yellow, not orange: orange (#F97316) marks search results.
+const statusStyles: Record<
+  HomeRoadSegment["status"],
+  { color: string; label: string }
+> = {
+  closed: { color: "#DC2626", label: "Jalan ditutup" },
+  maybe_open: { color: "#EAB308", label: "Mungkin sudah dibuka" },
+  open: { color: "#16A34A", label: "Jalan sudah dibuka" },
+};
 
 type Category = (typeof categories)[number]["name"];
 
@@ -277,9 +289,9 @@ function Home() {
       displayedReports.forEach((report) => {
         if (report.roadPath.length < 2) return;
 
-        const isClosed = report.status === "closed";
         const isSelected = currentSelectedId === report.reportId;
-        const statusColor = isClosed ? "#DC2626" : "#16A34A";
+        const { color: statusColor, label: statusLabel } =
+          statusStyles[report.status];
 
         // Bikin garis rute di peta
         const polyline = new Polyline(report.roadPath, {
@@ -295,7 +307,7 @@ function Home() {
             <strong>${escapeHtml(report.streetName ?? "Jalan tanpa nama")}</strong>
             <br/>
             <span style="color:${statusColor};font-weight:600">
-              ${isClosed ? "Jalan ditutup" : "Jalan sudah dibuka"}
+              ${statusLabel}
             </span>
           </div>`,
           { sticky: true },
@@ -348,7 +360,13 @@ function Home() {
         const iconSize = isSelected ? 16 : 12;
 
         const iconMarkup = renderToStaticMarkup(
-          isClosed ? (
+          report.status === "maybe_open" ? (
+            <span
+              style={{ fontSize: iconSize + 3, fontWeight: 800, lineHeight: 1 }}
+            >
+              ?
+            </span>
+          ) : report.status === "closed" ? (
             <X size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
           ) : (
             <Check size={iconSize} strokeWidth={3.5} color="#FFFFFF" />
