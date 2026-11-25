@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { formatAgo } from "../src/lib/time.ts";
 import { distanceToPathMeters, findNearestReport } from "../src/pages/home/proximity.ts";
+import { markReportAsked, readAskedIds } from "../src/lib/askedReports.ts";
 
 const now = new Date("2026-11-23T10:00:00Z");
 assert.equal(formatAgo("2026-11-23T09:59:30Z", now), "baru saja");
@@ -28,5 +29,19 @@ assert.equal(findNearestReport(here, [far, near, open], 200, new Set())?.segment
 assert.equal(findNearestReport(here, [far, near], 200, new Set(["near"]))?.segment.reportId, "far");
 assert.equal(findNearestReport(here, [open], 200, new Set()), null, "open reports are not asked");
 assert.equal(findNearestReport([-8.69, 115.255], [near], 200, new Set()), null, "~1.1 km away");
+
+const stored = new Map<string, string>();
+const storage = {
+  getItem: (key: string) => stored.get(key) ?? null,
+  setItem: (key: string, value: string) => void stored.set(key, value),
+};
+markReportAsked("reported-here", storage);
+assert.ok(readAskedIds(storage).has("reported-here"), "marked report is not asked");
+const blocked = {
+  getItem: (): string | null => { throw new Error("blocked"); },
+  setItem: () => { throw new Error("blocked"); },
+};
+markReportAsked("voted-in-panel", blocked);
+assert.ok(readAskedIds(blocked).has("voted-in-panel"), "blocked storage falls back to memory");
 
 console.log("vote checks ok");

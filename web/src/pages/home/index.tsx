@@ -16,6 +16,7 @@ import {
   LayerGroup,
   LatLngBounds,
   type LocationEvent,
+  type ErrorEvent as LeafletErrorEvent,
 } from "leaflet";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -44,31 +45,13 @@ import {
   type HomeRoadSegment,
 } from "../../services/homeService";
 
+import { markReportAsked, readAskedIds } from "@/lib/askedReports";
 import { NearbyVoteCard } from "./nearbyVoteCard";
 import { findNearestReport, type LatLng } from "./proximity";
 import "./style.css";
 
 const NEARBY_RADIUS_M = 200;
-const ASKED_STORAGE_KEY = "nearby-vote-asked";
-
-// Each report is asked once per browser session; storage may be blocked.
-function readAskedIds(): Set<string> {
-  try {
-    return new Set(
-      JSON.parse(sessionStorage.getItem(ASKED_STORAGE_KEY) ?? "[]") as string[],
-    );
-  } catch {
-    return new Set();
-  }
-}
-
-function writeAskedIds(ids: Set<string>) {
-  try {
-    sessionStorage.setItem(ASKED_STORAGE_KEY, JSON.stringify([...ids]));
-  } catch {
-    // Without storage the card may ask again after a reload; nothing else breaks.
-  }
-}
+const PERMISSION_DENIED = 1;
 
 const BALI_CENTER: [number, number] = [-8.409518, 115.188919];
 const SANUR_BOUNDS = new LatLngBounds([-8.721, 115.238], [-8.668, 115.283]);
@@ -88,8 +71,11 @@ const legends = [
   { label: "Jalan sudah dibuka", icon: CircleCheck },
 ] as const;
 
-// Lets the /detail/:id panel refresh the map after a vote.
-export type HomeOutletContext = { reloadReports: () => void };
+// Lets the /detail/:id panel refresh the map and silence the nearby card after a vote.
+export type HomeOutletContext = {
+  reloadReports: () => void;
+  markAsked: (reportId: string) => void;
+};
 
 // Yellow, not orange: orange (#F97316) marks search results.
 const statusStyles: Record<
@@ -162,7 +148,6 @@ function Home() {
   } | null>(null);
   const positionRef = useRef<LatLng | null>(null);
   const segmentsRef = useRef<HomeRoadSegment[]>([]);
-  const askedRef = useRef<Set<string> | null>(null);
   const pathRef = useRef(location.pathname);
 
   const pinNearbyReport = useCallback(() => {
@@ -170,26 +155,30 @@ function Home() {
       const position = positionRef.current;
       if (current || !position || pathRef.current !== "/") return current;
 
-      askedRef.current ??= readAskedIds();
       const found = findNearestReport(
         position,
         segmentsRef.current,
         NEARBY_RADIUS_M,
-        askedRef.current,
+        readAskedIds(),
       );
       return found && { report: found.segment, distanceM: found.distanceM };
     });
   }, []);
 
+  // Also used by the detail panel after a vote there.
+  const markAsked = useCallback((reportId: string) => {
+    markReportAsked(reportId);
+    setNearbyCard((current) =>
+      current?.report.reportId === reportId ? null : current,
+    );
+  }, []);
+
   const finishNearbyCard = useCallback(
     (reportId: string) => {
-      askedRef.current ??= readAskedIds();
-      askedRef.current.add(reportId);
-      writeAskedIds(askedRef.current);
-      setNearbyCard(null);
+      markAsked(reportId);
       reloadReports();
     },
-    [reloadReports],
+    [markAsked, reloadReports],
   );
 
   useEffect(() => {
@@ -302,8 +291,10 @@ function Home() {
       map.flyTo(event.latlng, Math.max(map.getMinZoom(), 17));
     };
 
-    const handleLocationError = () => {
+    const handleLocationError = (event: LeafletErrorEvent) => {
       setIsLocating(false);
+      // A cold-GPS timeout on load must not disable the nearby-vote watch.
+      if (event.code !== PERMISSION_DENIED) setWatchEnabled(true);
       setLocationMessage(
         "Lokasi tidak ditemukan. Periksa izin lokasi di browser.",
       );
@@ -941,7 +932,9 @@ function Home() {
         )}
       </section>
 
-      <Outlet context={{ reloadReports } satisfies HomeOutletContext} />
+      <Outlet
+        context={{ reloadReports, markAsked } satisfies HomeOutletContext}
+      />
     </main>
   );
 }

@@ -47,7 +47,7 @@ const statusIcons: Record<ReportStatus, LucideIcon> = {
 function DetailInfo() {
   const { reportId } = useParams();
   const navigate = useNavigate();
-  const { reloadReports } = useOutletContext<HomeOutletContext>();
+  const { reloadReports, markAsked } = useOutletContext<HomeOutletContext>();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [voteError, setVoteError] = useState<string | null>(null);
   const [voteMessage, setVoteMessage] = useState<string | null>(null);
@@ -145,6 +145,8 @@ function DetailInfo() {
           ? voteThanksMessage(report.status, result.reportStatus)
           : "Laporan telah kedaluwarsa; konfirmasi tidak disimpan.",
       );
+      // Don't let the nearby card ask again about a report just voted on here.
+      if (result.confirmationRecorded) markAsked(report.reportId);
     } catch (error) {
       console.error("Gagal menyimpan konfirmasi:", error);
       setVoteError(getReportErrorMessage(error));

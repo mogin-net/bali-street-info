@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { getReportErrorMessage, submitReport } from "@/services/reportService";
+import { markReportAsked } from "@/lib/askedReports";
 
 import {
   Dialog,
@@ -228,6 +229,9 @@ const ReportList = ({
       const result = await submitReport(pendingReport);
 
       console.log("Laporan berhasil disimpan:", result);
+
+      // The reporter is on-site: the nearby card must not ask about their own report.
+      if (typeof result === "string") markReportAsked(result);
 
       // Tutup popup konfirmasi
       setIsConfirmOpen(false);
