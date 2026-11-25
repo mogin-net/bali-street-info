@@ -15,6 +15,7 @@ import {
 
 import { Button } from "../../ui/button";
 import type { LocationPoint } from "../reportList";
+import { BaliBounds } from "../baliBounds";
 // import { isInsideSanur } from "../sanurBonds";
 
 interface ReportPopUpProps {
@@ -262,6 +263,8 @@ const ReportPopUp = ({
             />
 
             <MapResizeHandler />
+
+            <BaliBounds />
 
             <MapViewportHandler point={viewportLocation} />
 

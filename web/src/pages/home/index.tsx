@@ -46,6 +46,7 @@ import {
 } from "../../services/homeService";
 
 import { markReportAsked, readAskedIds } from "@/lib/askedReports";
+import { limitToBali } from "@/lib/baliBounds";
 import { NearbyVoteCard } from "./nearbyVoteCard";
 import { findNearestReport, type LatLng } from "./proximity";
 import "./style.css";
@@ -258,9 +259,9 @@ function Home() {
     const map = new LeafletMap(container, {
       zoomControl: true,
       scrollWheelZoom: true,
-      minZoom: 8,
       maxZoom: 19,
     }).setView(BALI_CENTER, 10);
+    const releaseBaliLimit = limitToBali(map);
 
     mapRef.current = map;
     map.zoomControl?.setPosition("bottomright");
@@ -340,6 +341,7 @@ function Home() {
       searchMarkerRef.current = null;
       mapRef.current = null;
 
+      releaseBaliLimit();
       map.remove();
     };
   }, []);

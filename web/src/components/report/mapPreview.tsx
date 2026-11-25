@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, useMap } from "react-leaflet";
 import type { RoutePreview } from "@/services/reportService";
+import { BaliBounds } from "./baliBounds";
 
 type LocationPoint = {
   lat: number;
@@ -70,6 +71,8 @@ const MapPreview = ({ startPoint, endPoint, routePreview }: MapPreviewProps) => 
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+
+        <BaliBounds />
 
         <PreviewMapController
           startPoint={startPoint}
