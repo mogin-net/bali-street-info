@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(48);
+SELECT plan(51);
 
 -- R = reporter, A/B/C = voters.
 INSERT INTO auth.users (id) VALUES
@@ -193,6 +193,11 @@ SELECT is(
     NOW(),
     'closed vote extends report life'
 );
+SELECT is(
+    (SELECT status FROM public.reports WHERE uuid = '20000000-0000-0000-0000-000000000004'),
+    'closed',
+    '2 closed (reporter + B) vs 1 open → closed'
+);
 
 -- Same timestamps, different category windows.
 SELECT results_eq(
@@ -310,6 +315,26 @@ SELECT is(
     (SELECT status FROM public.reports WHERE uuid = '30000000-0000-0000-0000-000000000005'),
     'closed',
     'expiry job keeps perbaikan reports for 7 days'
+);
+
+-- Helpers must never be exposed as RPCs (report_fresh_votes reads voter rows).
+SELECT is(
+    (SELECT bool_or(has_function_privilege(role_name, fn, 'EXECUTE'))
+     FROM unnest(ARRAY['anon', 'authenticated']) AS role_name,
+          unnest(ARRAY[
+              'public.report_vote_window(text)',
+              'public.report_expiry_interval(text)',
+              'public.compute_report_status(bigint, bigint)',
+              'public.report_fresh_votes(uuid, timestamptz)',
+              'public.report_next_vote_at(uuid, uuid)'
+          ]) AS fn),
+    FALSE,
+    'vote helpers are not executable by anon or authenticated'
+);
+SELECT is(
+    has_function_privilege('anon', 'public.submit_report_confirmation(uuid, boolean)', 'EXECUTE'),
+    FALSE,
+    'anon cannot submit votes'
 );
 
 SELECT * FROM finish();
