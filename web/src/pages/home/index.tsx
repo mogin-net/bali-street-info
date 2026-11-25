@@ -64,6 +64,9 @@ const legends = [
   { label: "Jalan sudah dibuka", icon: CircleCheck },
 ] as const;
 
+// Lets the /detail/:id panel refresh the map after a vote.
+export type HomeOutletContext = { reloadReports: () => void };
+
 // Yellow, not orange: orange (#F97316) marks search results.
 const statusStyles: Record<
   HomeRoadSegment["status"],
@@ -122,6 +125,8 @@ function Home() {
   const [roadSegments, setRoadSegments] = useState<HomeRoadSegment[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(true);
   const [reportsError, setReportsError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const reloadReports = useCallback(() => setReloadKey((key) => key + 1), []);
 
   const [isLocating, setIsLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
@@ -162,7 +167,7 @@ function Home() {
     return () => {
       active = false;
     };
-  }, [activeCategory, location.pathname]);
+  }, [activeCategory, location.pathname, reloadKey]);
 
   // Siapin peta Leaflet dan aktifin GPS pas awal load
   useEffect(() => {
@@ -834,7 +839,7 @@ function Home() {
         </div>
       </section>
 
-      <Outlet />
+      <Outlet context={{ reloadReports } satisfies HomeOutletContext} />
     </main>
   );
 }

@@ -10,6 +10,12 @@ export const statusLabels: Record<ReportStatus, string> = {
   expired: "Kedaluwarsa",
 };
 
+export function voteThanksMessage(previous: ReportStatus, next: ReportStatus) {
+  return previous === next
+    ? "Terima kasih! Vote-mu sudah tercatat."
+    : `Terima kasih! Vote-mu ikut mengubah status menjadi ${statusLabels[next]}.`;
+}
+
 export interface ReportDetail {
   reportId: string;
   streetName: string;
