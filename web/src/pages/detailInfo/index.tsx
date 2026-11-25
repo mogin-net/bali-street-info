@@ -14,6 +14,7 @@ import "./style.css";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   getReportDetail,
+  statusLabels,
   submitReportConfirmation,
   type ReportDetail as ReportDetailData,
 } from "@/services/detailInfoService";
@@ -80,11 +81,7 @@ function DetailInfo() {
 
   if (!report) return <Navigate to="/" replace />;
 
-  const roadStatus = {
-    closed: "Ditutup",
-    open: "Sudah Dibuka",
-    expired: "Kedaluwarsa",
-  }[report.status];
+  const roadStatus = statusLabels[report.status];
 
   const roadData = {
     name: report.streetName,

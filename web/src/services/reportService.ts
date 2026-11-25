@@ -12,7 +12,7 @@ const reportErrorMessages: Record<string, string> = {
   P2001: "Sesi anonim belum tersedia. Coba lagi beberapa saat lagi.",
   P2002: "Laporan tidak ditemukan.",
   P2003: "Laporan ini sudah kedaluwarsa dan tidak menerima konfirmasi baru.",
-  P2004: "Anda sudah mengirim konfirmasi untuk laporan ini.",
+  P2004: "Kamu baru saja vote untuk laporan ini. Coba lagi setelah 30 menit.",
 };
 
 export function getReportErrorMessage(error: unknown) {

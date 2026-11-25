@@ -9,8 +9,9 @@ interface HomeRoadSegmentRow {
   report_id: string;
   segment_id: string;
   segment_order: number;
-  status: "closed" | "open";
+  status: "closed" | "maybe_open" | "open";
   category: string;
+  report_created_at: string;
   road_geojson: {
     type: "LineString";
     coordinates: [number, number][];
@@ -30,8 +31,9 @@ export interface HomeRoadSegment {
   reportId: string;
   segmentId: string;
   segmentOrder: number;
-  status: "closed" | "open";
+  status: "closed" | "maybe_open" | "open";
   category: string;
+  reportCreatedAt: string;
   roadPath: LatLng[];
   markerPosition: LatLng;
   startMarkerPosition: LatLng | null;
@@ -65,6 +67,7 @@ export async function getHomeRoadSegments(
     segmentOrder: item.segment_order,
     status: item.status,
     category: item.category,
+    reportCreatedAt: item.report_created_at,
 
     // GeoJSON [longitude, latitude]
     // Diubah menjadi [latitude, longitude]
@@ -85,9 +88,11 @@ export async function getHomeRoadSegments(
 
     tooltipText:
       `${item.street_name ?? "Jalan tanpa nama"} ${
-        item.status === "closed"
-          ? "sedang ditutup"
-          : "sudah dibuka kembali"
+        {
+          closed: "sedang ditutup",
+          maybe_open: "mungkin sudah dibuka",
+          open: "sudah dibuka kembali",
+        }[item.status]
       }`,
   }));
 }
