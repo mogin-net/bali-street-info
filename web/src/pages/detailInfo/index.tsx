@@ -8,6 +8,7 @@ import {
   CarFront,
   Motorbike,
   Users,
+  MessageSquare,
 } from "lucide-react";
 
 import "./style.css";
@@ -108,6 +109,7 @@ function DetailInfo() {
       : report.isCarForbidden
         ? "Tidak dapat dilewati"
         : "Dapat dilewati",
+    description: report.description || "Tidak ada deskripsi tambahan.",
   };
 
   const submitConfirmation = async (isStillClosed: boolean) => {
@@ -178,6 +180,11 @@ function DetailInfo() {
       value: roadData.carAccess,
     },
   ];
+  const descriptionItem = {
+    label: "Deskripsi",
+    icon: MessageSquare,
+    value: roadData.description,
+  };
 
   return (
     <div className="popup-overlay" onClick={onClose}>
@@ -256,6 +263,15 @@ function DetailInfo() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="info-item">
+          <span className="info-label">
+            <MessageSquare size={16} />
+            {descriptionItem.label}
+          </span>
+
+          <p>{descriptionItem.value}</p>
         </div>
 
         <div className="road-confirmation">

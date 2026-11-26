@@ -28,6 +28,7 @@ import MapPreview from "./mapPreview";
 import type { RoutePreview } from "@/services/reportService";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
+import "./style.css";
 
 export interface LocationPoint {
   lat: number;
@@ -161,7 +162,8 @@ const ReportList = ({
 
     if (!routePreview || routePreviewError) {
       setValidationError(
-        routePreviewError ?? "Jalur jalan belum berhasil diperiksa. Silakan pilih ulang titik.",
+        routePreviewError ??
+          "Jalur jalan belum berhasil diperiksa. Silakan pilih ulang titik.",
       );
       return;
     }
@@ -246,10 +248,10 @@ const ReportList = ({
   return (
     <>
       <form
-        className="report-form flex min-h-0 flex-1 flex-col overflow-hidden bg-white"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white"
         onSubmit={handleSubmit}
       >
-        <div className="report-form__content flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
           {/* MAP PREVIEW */}
           <div className="space-y-2">
             {startPoint && endPoint && (
@@ -262,12 +264,16 @@ const ReportList = ({
             )}
             {routePreview && (
               <p className="text-xs text-gray-500" role="status">
-                Titik menempel ke jalan: awal {routePreview.start_snap_distance_m.toFixed(1)} m,
-                akhir {routePreview.end_snap_distance_m.toFixed(1)} m. Panjang jalur sekitar {Math.round(routePreview.route_length_m)} m.
+                Titik menempel ke jalan: awal{" "}
+                {routePreview.start_snap_distance_m.toFixed(1)} m, akhir{" "}
+                {routePreview.end_snap_distance_m.toFixed(1)} m. Panjang jalur
+                sekitar {Math.round(routePreview.route_length_m)} m.
               </p>
             )}
             {routePreviewError && (
-              <p className="text-xs text-red-600" role="alert">{routePreviewError}</p>
+              <p className="text-xs text-red-600" role="alert">
+                {routePreviewError}
+              </p>
             )}
           </div>
 
@@ -343,7 +349,7 @@ const ReportList = ({
 
             <div className="grid grid-cols-2 gap-2">
               {/* PERBAIKAN */}
-              <label className="report-form__category-option">
+              <label className="label_category">
                 <input
                   type="radio"
                   name="category"
@@ -360,7 +366,7 @@ const ReportList = ({
               </label>
 
               {/* UPACARA */}
-              <label className="report-form__category-option">
+              <label className="label_category">
                 <input
                   type="radio"
                   name="category"
@@ -376,7 +382,7 @@ const ReportList = ({
               </label>
 
               {/* BENCANA */}
-              <label className="report-form__category-option">
+              <label className="label_category">
                 <input
                   type="radio"
                   name="category"
@@ -392,7 +398,7 @@ const ReportList = ({
               </label>
 
               {/* EVENT */}
-              <label className="report-form__category-option">
+              <label className="label_category">
                 <input
                   type="radio"
                   name="category"
@@ -408,7 +414,7 @@ const ReportList = ({
               </label>
 
               {/* LAINNYA */}
-              <label className="report-form__category-option col-span-2 mx-auto w-1/2 justify-center">
+              <label className="label_category col-span-2 mx-auto w-1/2 justify-center">
                 <input
                   type="radio"
                   name="category"
@@ -439,7 +445,7 @@ const ReportList = ({
 
             <div className="grid grid-cols-2 gap-2">
               {/* MOBIL */}
-              <label className="report-form__vehicle-option">
+              <label className="label_accessibility_vehicle">
                 <input
                   type="checkbox"
                   name="vehicle"
@@ -460,7 +466,7 @@ const ReportList = ({
               </label>
 
               {/* MOTOR */}
-              <label className="report-form__vehicle-option">
+              <label className="label_accessibility_vehicle">
                 <input
                   type="checkbox"
                   name="vehicle"
@@ -558,10 +564,7 @@ const ReportList = ({
 
       {/* POPUP LAPORAN DITERIMA */}
       <Dialog open={isSuccessOpen} onOpenChange={handleSuccessOpenChange}>
-        <DialogContent
-          className="max-w-sm rounded-xl"
-          showCloseButton={false}
-        >
+        <DialogContent className="max-w-sm rounded-xl" showCloseButton={false}>
           <DialogHeader>
             <DialogTitle className="text-center text-base font-semibold">
               Laporan diterima
