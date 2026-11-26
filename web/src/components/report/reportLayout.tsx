@@ -3,8 +3,6 @@ import { useEffect, useState } from "react";
 import Head from "./head";
 import ReportList, { type LocationPoint } from "./reportList";
 import ReportPopUp from "./partials/reportPopUp";
-import "./report.css";
-import "./partials/reportPopup.css";
 import {
   getNearestStreetName,
   getReportErrorMessage,

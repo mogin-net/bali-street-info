@@ -81,7 +81,7 @@ const MapPreview = ({ startPoint, endPoint, routePreview }: MapPreviewProps) => 
           <Polyline
             key={`${segment.segment_order}-${segment.street_uuid}`}
             positions={segment.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])}
-            pathOptions={{ color: "#DC2626", weight: 5, opacity: 0.9 }}
+            pathOptions={{ className: "report-form__route-line" }}
           />
         ))}
 
@@ -90,10 +90,7 @@ const MapPreview = ({ startPoint, endPoint, routePreview }: MapPreviewProps) => 
           center={[startPoint.lat, startPoint.lng]}
           radius={7}
           pathOptions={{
-            color: "#FFFFFF",
-            fillColor: "#202020",
-            fillOpacity: 1,
-            weight: 2,
+            className: "report-form__start-marker",
           }}
         />
 
@@ -102,12 +99,12 @@ const MapPreview = ({ startPoint, endPoint, routePreview }: MapPreviewProps) => 
             <CircleMarker
               center={[routePreview.snapped_start.coordinates[1], routePreview.snapped_start.coordinates[0]]}
               radius={4}
-              pathOptions={{ color: "#111827", fillColor: "#FFFFFF", fillOpacity: 1, weight: 2 }}
+              pathOptions={{ className: "report-form__snapped-start-marker" }}
             />
             <CircleMarker
               center={[routePreview.snapped_end.coordinates[1], routePreview.snapped_end.coordinates[0]]}
               radius={4}
-              pathOptions={{ color: "#991B1B", fillColor: "#FFFFFF", fillOpacity: 1, weight: 2 }}
+              pathOptions={{ className: "report-form__snapped-end-marker" }}
             />
           </>
         )}
@@ -117,10 +114,7 @@ const MapPreview = ({ startPoint, endPoint, routePreview }: MapPreviewProps) => 
           center={[endPoint.lat, endPoint.lng]}
           radius={7}
           pathOptions={{
-            color: "#FFFFFF",
-            fillColor: "#DC2626",
-            fillOpacity: 1,
-            weight: 2,
+            className: "report-form__end-marker",
           }}
         />
       </MapContainer>

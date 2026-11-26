@@ -15,6 +15,7 @@ import {
 
 import { Button } from "../../ui/button";
 import type { LocationPoint } from "../reportList";
+import "./reportPopup.css";
 // import { isInsideSanur } from "../sanurBonds";
 
 interface ReportPopUpProps {
@@ -38,11 +39,11 @@ interface ReportPopUpProps {
 const sanurCenter: LatLngExpression = [-8.6925, 115.263];
 
 // Membuat ikon pin lokasi
-const createPinIcon = (color: string) =>
+const createPinIcon = (point: "start" | "end") =>
   divIcon({
     className: "",
     html: `
-      <div class="report-popup__pin">
+      <div class="report-popup__pin report-popup__pin--${point}">
         <svg
           width="32"
           height="42"
@@ -51,11 +52,9 @@ const createPinIcon = (color: string) =>
         >
           <path
             d="M16 1C7.7 1 1 7.7 1 16c0 11 15 25 15 25s15-14 15-25C31 7.7 24.3 1 16 1Z"
-            fill="${color}"
-            stroke="white"
-            stroke-width="2"
+            class="report-popup__pin-shape"
           />
-          <circle cx="16" cy="16" r="5" fill="white" />
+          <circle class="report-popup__pin-center" cx="16" cy="16" r="5" />
         </svg>
       </div>
     `,
@@ -63,8 +62,8 @@ const createPinIcon = (color: string) =>
     iconAnchor: [16, 42],
   });
 
-const startPinIcon = createPinIcon("#171717");
-const endPinIcon = createPinIcon("#DC2626");
+const startPinIcon = createPinIcon("start");
+const endPinIcon = createPinIcon("end");
 
 // Menangani klik pada peta
 const MapClickHandler = ({
@@ -213,14 +212,14 @@ const ReportPopUp = ({
   const viewportLocation = isInitialView ? startPoint : activeLocation;
 
   return (
-    <div className="report-popup fixed inset-0 z-[2000] flex flex-col justify-end bg-black/50">
-      <section className="report-popup__panel flex h-[82dvh] flex-col overflow-hidden rounded-t-3xl bg-white">
+    <div className="report-popup report-popup__overlay">
+      <section className="report-popup__panel report-popup__surface">
         {/* HEADER POPUP */}
-        <div className="relative shrink-0 px-5 pb-3 pt-3">
-          <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-gray-300" />
+        <div className="report-popup__header">
+          <div className="report-popup__drag-handle" />
 
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">
+          <div className="report-popup__header-content">
+            <h2 className="report-popup__title">
               Pilih Lokasi Penutupan Jalan
             </h2>
 
@@ -231,21 +230,21 @@ const ReportPopUp = ({
               onClick={onClose}
               aria-label="Tutup"
             >
-              <X className="size-5" />
+              <X className="report-popup__icon" />
             </Button>
           </div>
 
-          <p className="text-[11px] text-gray-500">
+          <p className="report-popup__instructions">
             Pilih titik awal dan titik akhir pada peta.
           </p>
         </div>
 
         {/* PETA */}
-        <div className="relative min-h-0 flex-1">
+        <div className="report-popup__map-container">
           <MapContainer
             center={sanurCenter}
             zoom={15}
-            className="h-full w-full"
+            className="report-popup__map-canvas"
             zoomControl
             scrollWheelZoom
           >
@@ -289,21 +288,21 @@ const ReportPopUp = ({
             type="button"
             size="icon"
             variant="secondary"
-            className="absolute bottom-4 right-4 z-[1000] rounded-full bg-white shadow-md"
+            className="report-popup__gps-button"
             onClick={locateMe}
             aria-label="Gunakan lokasi saya"
           >
-            <LocateFixed className="size-5" />
+            <LocateFixed className="report-popup__icon" />
           </Button>
         </div>
 
         {/* PILIH TITIK */}
-        <div className="shrink-0 space-y-3 bg-white p-4">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="report-popup__controls">
+          <div className="report-popup__point-selector">
             <Button
               type="button"
               variant={activePoint === "start" ? "default" : "outline"}
-              className="h-10 text-xs"
+              className="report-popup__point-selector-button"
               onClick={() => {
                 setIsInitialView(false);
                 onChangeActive("start");
@@ -315,7 +314,7 @@ const ReportPopUp = ({
             <Button
               type="button"
               variant={activePoint === "end" ? "default" : "outline"}
-              className="h-10 text-xs"
+              className="report-popup__point-selector-button"
               onClick={() => {
                 setIsInitialView(false);
                 onChangeActive("end");
@@ -325,15 +324,15 @@ const ReportPopUp = ({
             </Button>
           </div>
 
-          <div className="space-y-2 text-xs">
+          <div className="report-popup__point-details">
             {/* DETAIL TITIK AWAL */}
-            <div className="flex items-center gap-3">
-              <span className="size-3 rounded-full bg-black" />
+            <div className="report-popup__point-row">
+              <span className="report-popup__start-marker" />
 
-              <div className="min-w-0">
-                <p className="font-semibold">Titik Awal</p>
+              <div className="report-popup__point-copy">
+                <p className="report-popup__point-title">Titik Awal</p>
 
-                <p className="truncate text-[10px] text-gray-500">
+                <p className="report-popup__street-name">
                   {startPoint
                     ? isResolvingStart
                       ? "Mencari nama jalan..."
@@ -347,7 +346,7 @@ const ReportPopUp = ({
                   !startStreetLookupFailed &&
                   !startStreetName && (
                     <p
-                      className="mt-1 text-[10px] text-amber-700"
+                      className="report-popup__lookup-warning"
                       role="status"
                     >
                       Nama jalan tidak ditemukan/berada di luar batas daerah.
@@ -355,7 +354,7 @@ const ReportPopUp = ({
                     </p>
                   )}
                 {startPoint && startStreetLookupFailed && (
-                  <p className="mt-1 text-[10px] text-amber-700" role="status">
+                  <p className="report-popup__lookup-warning" role="status">
                     Nama jalan gagal didapat. Silahkan pilih ulang titik ini.
                   </p>
                 )}
@@ -363,13 +362,13 @@ const ReportPopUp = ({
             </div>
 
             {/* DETAIL TITIK AKHIR */}
-            <div className="flex items-center gap-3">
-              <span className="size-3 rounded-full bg-red-600" />
+            <div className="report-popup__point-row">
+              <span className="report-popup__end-marker" />
 
-              <div className="min-w-0">
-                <p className="font-semibold">Titik Akhir</p>
+              <div className="report-popup__point-copy">
+                <p className="report-popup__point-title">Titik Akhir</p>
 
-                <p className="truncate text-[10px] text-gray-500">
+                <p className="report-popup__street-name">
                   {endPoint
                     ? isResolvingEnd
                       ? "Mencari nama jalan..."
@@ -383,7 +382,7 @@ const ReportPopUp = ({
                   !endStreetLookupFailed &&
                   !endStreetName && (
                     <p
-                      className="mt-1 text-[10px] text-amber-700"
+                      className="report-popup__lookup-warning"
                       role="status"
                     >
                       Nama jalan tidak ditemukan/berada di luar batas daerah.
@@ -391,7 +390,7 @@ const ReportPopUp = ({
                     </p>
                   )}
                 {endPoint && endStreetLookupFailed && (
-                  <p className="mt-1 text-[10px] text-amber-700" role="status">
+                  <p className="report-popup__lookup-warning" role="status">
                     Nama jalan gagal didapat. Silahkan pilih Nama jalan gagal
                     diperiksa. Silahkan pilih ulang titik ini. ulang titik ini.
                   </p>
@@ -401,20 +400,20 @@ const ReportPopUp = ({
           </div>
 
           {/* TOMBOL AKSI */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="report-popup__point-selector">
             <Button
               type="button"
               variant="outline"
-              className="h-11"
+              className="report-popup__action-button"
               onClick={onReset}
             >
-              <RefreshCcw className="size-5" />
+              <RefreshCcw className="report-popup__icon" />
               Reset
             </Button>
 
             <Button
               type="button"
-              className="h-11"
+              className="report-popup__action-button"
               disabled={
                 !startPoint ||
                 !endPoint ||

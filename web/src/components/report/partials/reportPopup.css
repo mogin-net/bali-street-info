@@ -1,3 +1,5 @@
+@reference "../../../index.css";
+
 .report-popup__panel {
   width: 100%;
 }
@@ -11,3 +13,112 @@
   filter: drop-shadow(0 2px 3px rgb(0 0 0 / 35%));
 }
 
+.report-popup__pin-shape {
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.report-popup__pin--start .report-popup__pin-shape {
+  fill: #171717;
+}
+
+.report-popup__pin--end .report-popup__pin-shape {
+  fill: #dc2626;
+}
+
+.report-popup__pin-center {
+  fill: #fff;
+}
+
+/* Migrated Tailwind utilities from report JSX. */
+.report-popup__overlay {
+  @apply fixed inset-0 z-[2000] flex flex-col justify-end bg-black/50;
+}
+
+.report-popup__surface {
+  @apply flex h-[82dvh] flex-col overflow-hidden rounded-t-3xl bg-white;
+}
+
+.report-popup__header {
+  @apply relative shrink-0 px-5 pb-3 pt-3;
+}
+
+.report-popup__drag-handle {
+  @apply mx-auto mb-3 h-1 w-12 rounded-full bg-gray-300;
+}
+
+.report-popup__header-content {
+  @apply flex items-center justify-between;
+}
+
+.report-popup__title {
+  @apply text-sm font-semibold;
+}
+
+.report-popup__icon {
+  @apply size-5;
+}
+
+.report-popup__instructions {
+  @apply text-[11px] text-gray-500;
+}
+
+.report-popup__map-container {
+  @apply relative min-h-0 flex-1;
+}
+
+.report-popup__map-canvas {
+  @apply h-full w-full;
+}
+
+.report-popup__gps-button {
+  @apply absolute bottom-4 right-4 z-[1000] rounded-full bg-white shadow-md;
+}
+
+.report-popup__controls {
+  @apply shrink-0 space-y-3 bg-white p-4;
+}
+
+.report-popup__point-selector {
+  @apply grid grid-cols-2 gap-2;
+}
+
+.report-popup__point-selector-button {
+  @apply h-10 text-xs;
+}
+
+.report-popup__point-details {
+  @apply space-y-2 text-xs;
+}
+
+.report-popup__point-row {
+  @apply flex items-center gap-3;
+}
+
+.report-popup__start-marker {
+  @apply size-3 rounded-full bg-black;
+}
+
+.report-popup__point-copy {
+  @apply min-w-0;
+}
+
+.report-popup__point-title {
+  @apply font-semibold;
+}
+
+.report-popup__street-name {
+  @apply truncate text-[10px] text-gray-500;
+}
+
+.report-popup__lookup-warning {
+  @apply mt-1 text-[10px] text-amber-700;
+}
+
+.report-popup__end-marker {
+  @apply size-3 rounded-full bg-red-600;
+}
+
+.report-popup__action-button {
+  @apply h-11;
+}

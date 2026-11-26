@@ -1,3 +1,5 @@
+@reference "../../index.css";
+
 .report-page {
   display: flex;
   width: 100%;
@@ -55,6 +57,39 @@
   width: 100%;
 }
 
+.report-form__route-line {
+  stroke: #dc2626;
+  stroke-width: 5;
+  stroke-opacity: 0.9;
+}
+
+.report-form__start-marker,
+.report-form__end-marker,
+.report-form__snapped-start-marker,
+.report-form__snapped-end-marker {
+  stroke: #fff;
+  stroke-width: 2;
+  fill-opacity: 1;
+}
+
+.report-form__start-marker {
+  fill: #202020;
+}
+
+.report-form__end-marker {
+  fill: #dc2626;
+}
+
+.report-form__snapped-start-marker {
+  stroke: #111827;
+  fill: #fff;
+}
+
+.report-form__snapped-end-marker {
+  stroke: #991b1b;
+  fill: #fff;
+}
+
 .report-form {
   min-height: 0;
   flex: 1 1 0%;
@@ -106,4 +141,167 @@
   .report-form__content {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
+}
+
+/* Migrated Tailwind utilities from report JSX. */
+.report-form__surface {
+  @apply flex min-h-0 flex-1 flex-col overflow-hidden bg-white;
+}
+
+.report-form__scroll-content {
+  @apply flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4;
+}
+
+.report-form__section {
+  @apply space-y-2;
+}
+
+.report-form__status-note {
+  @apply text-xs text-gray-500;
+}
+
+.report-form__error-note {
+  @apply text-xs text-red-600;
+}
+
+.report-form__section-label {
+  @apply text-xs font-semibold;
+}
+
+.report-form__required-mark {
+  @apply text-red-500;
+}
+
+.report-form__location-picker {
+  @apply flex min-h-12 w-full items-center gap-3 rounded-xl border bg-white px-3 text-left;
+}
+@variant hover {
+  .report-form__location-picker {
+    @apply bg-gray-50;
+  }
+}
+
+.report-form__location-icon {
+  @apply size-5 shrink-0 text-gray-500;
+}
+
+.report-form__location-picker-copy {
+  @apply flex-1 text-xs text-gray-500;
+}
+
+.report-form__location-picker-indicator {
+  @apply text-xs text-gray-400;
+}
+
+.report-form__selected-route {
+  @apply flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors;
+}
+@variant hover {
+  .report-form__selected-route {
+    @apply bg-gray-50;
+  }
+}
+
+.report-form__route-icon {
+  @apply flex shrink-0 items-center justify-center;
+}
+
+.report-form__route-details {
+  @apply min-w-0 flex-1 space-y-3;
+}
+
+.report-form__street-name {
+  @apply break-all text-[11px] text-gray-500;
+}
+
+.report-form__section-hint {
+  @apply text-[11px] text-gray-400;
+}
+
+.report-form__option-grid {
+  @apply grid grid-cols-2 gap-2;
+}
+
+.report-form__visually-hidden {
+  @apply sr-only;
+}
+
+.report-form__option-icon {
+  @apply size-6 shrink-0;
+}
+
+.report-form__option-label {
+  @apply block text-xs font-semibold;
+}
+
+.report-form__vehicle-checkbox {
+  @apply size-4 accent-black;
+}
+
+.report-form__vehicle-hint {
+  @apply block text-[10px] text-gray-500;
+}
+
+.report-form__description-input {
+  @apply min-h-28 resize-none;
+}
+
+.report-form__submit-footer {
+  @apply shrink-0 border-t bg-white p-4;
+}
+
+.report-form__validation-error {
+  @apply mb-3 text-xs text-red-600;
+}
+
+.report-form__submit-button {
+  @apply h-11 w-full rounded-xl;
+}
+
+.report-form__submit-icon {
+  @apply mr-2 size-4;
+}
+
+.report-form__confirmation-dialog {
+  @apply max-w-sm rounded-xl p-4;
+}
+
+.report-form__dialog-title {
+  @apply text-base font-semibold;
+}
+
+.report-form__dialog-description {
+  @apply text-xs leading-relaxed;
+}
+
+.report-form__dialog-actions {
+  @apply flex flex-row justify-end gap-2;
+}
+
+.report-form__success-dialog {
+  @apply max-w-sm rounded-xl;
+}
+
+.report-form__success-title {
+  @apply text-center text-base font-semibold;
+}
+
+.report-form__success-description {
+  @apply text-center text-xs leading-relaxed;
+}
+
+.report-form__success-overlay-button {
+  @apply absolute inset-0 z-10 cursor-pointer rounded-xl;
+}
+@variant focus-visible {
+  .report-form__success-overlay-button {
+    @apply outline-none ring-2 ring-ring ring-offset-2;
+  }
+}
+
+.report-form__category-option--other {
+  grid-column: span 2;
+  width: 50%;
+  margin-inline: auto;
+  justify-content: center;
 }
