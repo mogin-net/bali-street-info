@@ -42,14 +42,7 @@ const createPinIcon = (color: string) =>
   divIcon({
     className: "",
     html: `
-      <div style="
-        width: 32px;
-        height: 42px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));
-      ">
+      <div class="report-popup__pin">
         <svg
           width="32"
           height="42"
@@ -220,8 +213,8 @@ const ReportPopUp = ({
   const viewportLocation = isInitialView ? startPoint : activeLocation;
 
   return (
-    <div className="fixed inset-0 z-[2000] flex flex-col justify-end bg-black/50">
-      <section className="flex h-[82dvh] flex-col overflow-hidden rounded-t-3xl bg-white">
+    <div className="report-popup fixed inset-0 z-[2000] flex flex-col justify-end bg-black/50">
+      <section className="report-popup__panel flex h-[82dvh] flex-col overflow-hidden rounded-t-3xl bg-white">
         {/* HEADER POPUP */}
         <div className="relative shrink-0 px-5 pb-3 pt-3">
           <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-gray-300" />

@@ -7,7 +7,7 @@ interface HeadProps {
 
 const Head = ({ onBack }: HeadProps) => {
   return (
-    <header className="flex h-14 shrink-0 items-center border-b bg-white px-4">
+    <header className="report-header">
       <Button
         type="button"
         variant="ghost"
@@ -15,10 +15,10 @@ const Head = ({ onBack }: HeadProps) => {
         onClick={onBack}
         aria-label="Kembali"
       >
-        <ArrowLeft className="size-5" />
+        <ArrowLeft className="report-header__back-icon" />
       </Button>
 
-      <h1 className="flex-1 pr-10 text-center text-sm font-semibold">
+      <h1 className="report-header__title">
         Lapor Penutupan Jalan
       </h1>
     </header>

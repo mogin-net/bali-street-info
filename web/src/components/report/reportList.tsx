@@ -28,7 +28,6 @@ import MapPreview from "./mapPreview";
 import type { RoutePreview } from "@/services/reportService";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-import "./style.css";
 
 export interface LocationPoint {
   lat: number;
@@ -247,10 +246,10 @@ const ReportList = ({
   return (
     <>
       <form
-        className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white"
+        className="report-form flex min-h-0 flex-1 flex-col overflow-hidden bg-white"
         onSubmit={handleSubmit}
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+        <div className="report-form__content flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
           {/* MAP PREVIEW */}
           <div className="space-y-2">
             {startPoint && endPoint && (
@@ -344,7 +343,7 @@ const ReportList = ({
 
             <div className="grid grid-cols-2 gap-2">
               {/* PERBAIKAN */}
-              <label className="label_category">
+              <label className="report-form__category-option">
                 <input
                   type="radio"
                   name="category"
@@ -361,7 +360,7 @@ const ReportList = ({
               </label>
 
               {/* UPACARA */}
-              <label className="label_category">
+              <label className="report-form__category-option">
                 <input
                   type="radio"
                   name="category"
@@ -377,7 +376,7 @@ const ReportList = ({
               </label>
 
               {/* BENCANA */}
-              <label className="label_category">
+              <label className="report-form__category-option">
                 <input
                   type="radio"
                   name="category"
@@ -393,7 +392,7 @@ const ReportList = ({
               </label>
 
               {/* EVENT */}
-              <label className="label_category">
+              <label className="report-form__category-option">
                 <input
                   type="radio"
                   name="category"
@@ -409,7 +408,7 @@ const ReportList = ({
               </label>
 
               {/* LAINNYA */}
-              <label className="label_category col-span-2 mx-auto w-1/2 justify-center">
+              <label className="report-form__category-option col-span-2 mx-auto w-1/2 justify-center">
                 <input
                   type="radio"
                   name="category"
@@ -440,7 +439,7 @@ const ReportList = ({
 
             <div className="grid grid-cols-2 gap-2">
               {/* MOBIL */}
-              <label className="label_accessibility_vehicle">
+              <label className="report-form__vehicle-option">
                 <input
                   type="checkbox"
                   name="vehicle"
@@ -461,7 +460,7 @@ const ReportList = ({
               </label>
 
               {/* MOTOR */}
-              <label className="label_accessibility_vehicle">
+              <label className="report-form__vehicle-option">
                 <input
                   type="checkbox"
                   name="vehicle"

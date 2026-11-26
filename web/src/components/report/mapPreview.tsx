@@ -49,16 +49,16 @@ const PreviewMapController = ({ startPoint, endPoint, routePreview }: MapPreview
 const MapPreview = ({ startPoint, endPoint, routePreview }: MapPreviewProps) => {
   if (!startPoint || !endPoint) {
     return (
-      <div className="flex h-40 items-center justify-center rounded-xl border bg-gray-50 text-sm text-gray-400"></div>
+      <div className="report-form__map-placeholder"></div>
     );
   }
 
   return (
-    <div className="h-40 w-full overflow-hidden rounded-xl border">
+    <div className="report-form__map-preview">
       <MapContainer
         center={[startPoint.lat, startPoint.lng]}
         zoom={15}
-        className="h-full w-full"
+        className="report-form__map-canvas"
         zoomControl={false}
         scrollWheelZoom={false}
         dragging={false}

@@ -1,0 +1,13 @@
+.report-popup__panel {
+  width: 100%;
+}
+
+.report-popup__pin {
+  display: flex;
+  width: 32px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 35%));
+}
+
